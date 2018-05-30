@@ -77,39 +77,39 @@ LoadPalettesLoop:
                         ; if compare was equal to 32, keep going down
 
   LDA #$80
-  STA $0200
-  STA $0203
-  LDA #$00
-  STA $0201
-  STA $0202
-  LDA #$80
-  
-  LDA #$80
   STA $0204
-  LDA #$01
-  STA $0205
-  LDA #$00
-  STA $0206
-  LDA #$88
   STA $0207
+  LDA #$00
+  STA $0205
+  STA $0206
+  LDA #$80
   
-  LDA #$88
+  LDA #$80
   STA $0208
-  LDA #$10
+  LDA #$01
   STA $0209
   LDA #$00
   STA $020A
-  LDA #$80
+  LDA #$88
   STA $020B
   
   LDA #$88
   STA $020C
-  LDA #$11
+  LDA #$10
   STA $020D
   LDA #$00
   STA $020E
-  LDA #$88
+  LDA #$80
   STA $020F
+  
+  LDA #$88
+  STA $0210
+  LDA #$11
+  STA $0211
+  LDA #$00
+  STA $0212
+  LDA #$88
+  STA $0213
   
   LDA #$00
   STA flipCooldown
@@ -159,28 +159,28 @@ DontTurnLeft:
   RTI
   
 TurnPlayerLeft:
-  
+ LDA $0205
  
  RTS
   
 FlipPlayer:
   
-  LDA $0201 ;swap left column of sprites
-  LDX $0209
-  STA $0209
-  STX $0201
-  
-  LDA $0205 ;swap right column of sprites
+  LDA $0205 ;swap left column of sprites
   LDX $020D
   STA $020D
   STX $0205
+  
+  LDA $0209 ;swap right column of sprites
+  LDX $0211
+  STA $0211
+  STX $0209
 
-  LDA $0202 ;Change sprite data to flip vertically
+  LDA $0206 ;Change sprite data to flip vertically
   EOR #%10000000
-  STA $0202
   STA $0206
   STA $020A
   STA $020E
+  STA $0212
 
   LDA playerStatus
   EOR #%00000001
