@@ -151,7 +151,7 @@ DontFlip:
   
   LDA playerStatus
   AND #%00000010
-  BEQ DontTurnLeft ;already facing left
+  BNE DontTurnLeft ;already facing left
   
   JSR TurnPlayerLeft
 DontTurnLeft:
@@ -160,6 +160,25 @@ DontTurnLeft:
   
 TurnPlayerLeft:
  LDA $0205
+ LDX $0209
+ STA $0209
+ STX $0205
+ 
+ LDA $020D
+ LDX $0211
+ STA $0211
+ STX $020D
+ 
+ LDA $0206
+ EOR #%01000000
+ STA $0206
+ STA $020A
+ STA $020E
+ STA $0212
+ 
+ LDA playerStatus
+ EOR #%00000010
+ STA playerStatus
  
  RTS
   
