@@ -22,6 +22,8 @@ OAMADDR = $2003
 PPUADDR = $2006
 PPUDATA = $2007
 OAMDMA = $4014
+
+PLAYERSPRITES = $0204 ;Location of first byte of the four sprites that constitute the player
 ;;;;;;;;;;;;
     
   .bank 0
@@ -77,39 +79,39 @@ LoadPalettesLoop:
                         ; if compare was equal to 32, keep going down
 
   LDA #$80
-  STA $0204
-  STA $0207
+  STA PLAYERSPRITES
+  STA PLAYERSPRITES + 3
   LDA #$00
-  STA $0205
-  STA $0206
+  STA PLAYERSPRITES + 1
+  STA PLAYERSPRITES + 2
   LDA #$80
   
   LDA #$80
-  STA $0208
+  STA PLAYERSPRITES + 4
   LDA #$01
-  STA $0209
+  STA PLAYERSPRITES + 5
   LDA #$00
-  STA $020A
+  STA PLAYERSPRITES + 6
   LDA #$88
-  STA $020B
+  STA PLAYERSPRITES + 7
   
   LDA #$88
-  STA $020C
+  STA PLAYERSPRITES + 8
   LDA #$10
-  STA $020D
+  STA PLAYERSPRITES + 9
   LDA #$00
-  STA $020E
+  STA PLAYERSPRITES + 10
   LDA #$80
-  STA $020F
+  STA PLAYERSPRITES + 11
   
   LDA #$88
-  STA $0210
+  STA PLAYERSPRITES + 12
   LDA #$11
-  STA $0211
+  STA PLAYERSPRITES + 13
   LDA #$00
-  STA $0212
+  STA PLAYERSPRITES + 14
   LDA #$88
-  STA $0213
+  STA PLAYERSPRITES + 15
   
   LDA #$00
   STA flipCooldown
@@ -170,22 +172,22 @@ DontTurnRight:
   RTI
   
 TurnPlayer:
- LDA $0205
- LDX $0209
- STA $0209
- STX $0205
+ LDA PLAYERSPRITES + 1
+ LDX PLAYERSPRITES + 5
+ STA PLAYERSPRITES + 5
+ STX PLAYERSPRITES + 1
  
- LDA $020D
- LDX $0211
- STA $0211
- STX $020D
+ LDA PLAYERSPRITES + 9
+ LDX PLAYERSPRITES + 13
+ STA PLAYERSPRITES + 13
+ STX PLAYERSPRITES + 9
  
- LDA $0206
+ LDA PLAYERSPRITES + 2
  EOR #%01000000
- STA $0206
- STA $020A
- STA $020E
- STA $0212
+ STA PLAYERSPRITES + 2
+ STA PLAYERSPRITES + 6
+ STA PLAYERSPRITES + 10
+ STA PLAYERSPRITES + 14
  
  LDA playerStatus
  EOR #%00000010
@@ -195,22 +197,22 @@ TurnPlayer:
   
 FlipPlayer:
   
-  LDA $0205 ;swap left column of sprites
-  LDX $020D
-  STA $020D
-  STX $0205
+  LDA PLAYERSPRITES + 1 ;swap left column of sprites
+  LDX PLAYERSPRITES + 9
+  STA PLAYERSPRITES + 9
+  STX PLAYERSPRITES + 1
   
-  LDA $0209 ;swap right column of sprites
-  LDX $0211
-  STA $0211
-  STX $0209
+  LDA PLAYERSPRITES + 5 ;swap right column of sprites
+  LDX PLAYERSPRITES + 13
+  STA PLAYERSPRITES + 13
+  STX PLAYERSPRITES + 5
 
-  LDA $0206 ;Change sprite data to flip vertically
+  LDA PLAYERSPRITES + 2 ;Change sprite data to flip vertically
   EOR #%10000000
-  STA $0206
-  STA $020A
-  STA $020E
-  STA $0212
+  STA PLAYERSPRITES + 2
+  STA PLAYERSPRITES + 6
+  STA PLAYERSPRITES + 10
+  STA PLAYERSPRITES + 14
 
   LDA playerStatus
   EOR #%00000001
