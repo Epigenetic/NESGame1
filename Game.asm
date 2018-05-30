@@ -153,12 +153,23 @@ DontFlip:
   AND #%00000010
   BNE DontTurnLeft ;already facing left
   
-  JSR TurnPlayerLeft
+  JSR TurnPlayer
 DontTurnLeft:
+
+  LDA buttons
+  AND #%00000001 ;right pressed
+  BEQ DontTurnRight
+  
+  LDA playerStatus
+  AND #%00000010
+  BEQ DontTurnRight ;already facing right
+  
+  JSR TurnPlayer
+DontTurnRight:
   
   RTI
   
-TurnPlayerLeft:
+TurnPlayer:
  LDA $0205
  LDX $0209
  STA $0209
