@@ -14,6 +14,18 @@ playerStatus .rs 1 ;bit 1: 0 is facing right, 1 is facing left
 buttons .rs 1
 flipCooldown .rs 1
 
+;Metatile lookup table
+Metatiles:
+  .dw GroundUp
+  .dw GroundDown
+  .dw GroundLeft
+  .dw GroundRight
+  .dw GroundBLCorner
+  .dw GroundBRCorner
+  .dw GroundTLCorner
+  .dw GroundTRCorner
+  .dw GroundInternal
+
 ;; DECLARE SOME CONSTANTS HERE
 PPUCTRL = $2000
 PPUMASK = $2001
@@ -274,6 +286,43 @@ ReadControllerLoop:
 	
   .bank 1
   .org $E000
+  
+GroundUp:
+  .db $00,$01
+  .db $10,$11
+  
+GroundDown:
+  .db $10,$11
+  .db $12,$13
+  
+GroundLeft:
+  .db $02,$10
+  .db $03,$11
+  
+GroundRight:
+  .db $10,$06
+  .db $11,$16
+  
+GroundBLCorner:
+  .db $02,$10
+  .db $14,$12
+  
+GroundBRCorner:
+  .db $11,$16
+  .db $12,$15
+  
+GroundTLCorner:
+  .db $04,$01
+  .db $03,$10
+  
+GroundTRCorner:
+  .db $00,$05
+  .db $11,$06
+  
+GroundInternal:
+  .db $10,$11
+  .db $11,$10
+  
 palette:
   .db $0F,$2D,$3D,$1F,  $0F,$36,$17,$1F,  $0F,$30,$21,$1F,  $0F,$27,$17,$1F   ;;background palette
   .db $10,$0F,$15,$36,  $22,$02,$38,$3C,  $22,$1C,$15,$14,  $22,$02,$38,$3C   ;;sprite palette
