@@ -131,8 +131,8 @@ NMI:
   STA OAMDMA       ; set the high byte (02) of the RAM address, start the transfer
   
   JSR ReadController
-  
-  LDA flipCooldown
+
+  LDA flipCooldown  ;don't flip if the player has flipped to recently
   BNE DontFlipDecTimer
   
   LDA buttons
@@ -144,23 +144,36 @@ NMI:
 DontFlipDecTimer:
   DEC flipCooldown
 DontFlip:
+
+  LDA buttons
+  AND #%00000010 ;left pressed
+  BEQ DontTurnLeft
+  
+  LDA playerStatus
+  AND #%00000010
+  BEQ DontTurnLeft ;already facing left
+  
+  JSR TurnPlayerLeft
+DontTurnLeft:
   
   RTI
   
+TurnPlayerLeft:
+  
+ 
+ RTS
+  
 FlipPlayer:
-  LDA playerStatus
-  AND #%00000001
-  BEQ UpToDown
   
   LDA $0201 ;swap left column of sprites
-  LDX $0205
-  STA $0205
+  LDX $0209
+  STA $0209
   STX $0201
   
-  LDA $0209 ;swap right column of sprites
+  LDA $0205 ;swap right column of sprites
   LDX $020D
   STA $020D
-  STX $0209
+  STX $0205
 
   LDA $0202 ;Change sprite data to flip vertically
   EOR #%10000000

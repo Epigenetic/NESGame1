@@ -1,18 +1,17 @@
 ; Game.asm
 LoadPalettes                     = $C03D
 DontFlipDecTimer                 = $C0D9
-ReadControllerLoop               = $C14C
+ReadControllerLoop               = $C132
 Forever                          = $C0B7
 palette                          = $E000
+TurnPlayerLeft                   = $C0EE
 LoadPalettesLoop                 = $C04C
-DownToUp                         = $C0FC
-FlipPlayer                       = $C0DD
+FlipPlayer                       = $C0EF
+DontTurnLeft                     = $C0ED
 vblankwait1                      = $C014
 vblankwait2                      = $C038
 clrmem                           = $C019
 RESET                            = $C000
-FlipDone                         = $C129
 NMI                              = $C0BA
 DontFlip                         = $C0DC
-ReadController                   = $C140
-UpToDown                         = $C114
+ReadController                   = $C126
