@@ -152,33 +152,15 @@ FlipPlayer:
   AND #%00000001
   BEQ UpToDown
   
-DownToUp:
-  LDX #$10
-  STX $0209
-  INX
-  STX $020D
-  
-  LDX #$00
+  LDA $0201 ;swap left column of sprites
+  LDX $0205
+  STA $0205
   STX $0201
-  INX
-  STX $0205
-    
-  DEC playerStatus ;update player orientation
   
-  JMP FlipDone
-UpToDown:
-  LDX #$10 ;Change first row of sprites
-  STX $0201
-  INX
-  STX $0205
-  
-  LDX #$00 ;Change second row of sprites
+  LDA $0209 ;swap right column of sprites
+  LDX $020D
+  STA $020D
   STX $0209
-  INX
-  STX $020D
-  
-  INC playerStatus
-FlipDone:
 
   LDA $0202 ;Change sprite data to flip vertically
   EOR #%10000000
@@ -187,7 +169,10 @@ FlipDone:
   STA $020A
   STA $020E
 
-
+  LDA playerStatus
+  EOR #%00000001
+  STA playerStatus
+  
   LDA #$0C
   STA flipCooldown
   RTS
