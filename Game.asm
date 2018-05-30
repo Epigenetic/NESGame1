@@ -153,9 +153,13 @@ DontFlip:
   
   LDA playerStatus
   AND #%00000010
-  BNE DontTurnLeft ;already facing left
+  BNE MoveLeft ;already facing left
   
   JSR TurnPlayer
+
+MoveLeft:
+  JSR MovePlayerLeft  
+
 DontTurnLeft:
 
   LDA buttons
@@ -164,13 +168,44 @@ DontTurnLeft:
   
   LDA playerStatus
   AND #%00000010
-  BEQ DontTurnRight ;already facing right
+  BEQ MoveRight ;already facing right
   
   JSR TurnPlayer
+  
+MoveRight:
+  JSR MovePlayerRight
+
 DontTurnRight:
   
   RTI
   
+MovePlayerLeft:
+  LDA PLAYERSPRITES + 3
+  SEC
+  SBC #$01
+  STA PLAYERSPRITES + 3
+  STA PLAYERSPRITES + 11
+  
+  LDA PLAYERSPRITES + 7
+  SEC
+  SBC #$01
+  STA PLAYERSPRITES + 7
+  STA PLAYERSPRITES + 15
+  RTS
+  
+MovePlayerRight
+  LDA PLAYERSPRITES + 3
+  CLC
+  ADC #$01
+  STA PLAYERSPRITES + 3
+  STA PLAYERSPRITES + 11
+  
+  LDA PLAYERSPRITES + 7
+  CLC
+  ADC #$01
+  STA PLAYERSPRITES + 7
+  STA PLAYERSPRITES + 15
+  RTS
 TurnPlayer:
  LDA PLAYERSPRITES + 1
  LDX PLAYERSPRITES + 5
