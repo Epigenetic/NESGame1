@@ -13,6 +13,12 @@ playerStatus .rs 1 ;bit 1: 0 is facing right, 1 is facing left
 				   ;bit 0:0 is normal, 1 is up
 buttons .rs 1
 flipCooldown .rs 1
+rowBuffer .rs 32
+backgroundPointer .rs 1
+metatilePointer .rs 1
+metatileRepeat .rs 1
+metatitlesDrawn .rs 1
+yData .rs 1
 
 ;Metatile lookup table
 Metatiles:
@@ -25,6 +31,7 @@ Metatiles:
   .dw GroundTLCorner
   .dw GroundTRCorner
   .dw GroundInternal
+  .dw Blank
 
 ;; DECLARE SOME CONSTANTS HERE
 PPUCTRL = $2000
@@ -89,7 +96,13 @@ LoadPalettesLoop:
   CPX #$20              ; Compare X to hex $10, decimal 16 - copying 16 bytes = 4 sprites
   BNE LoadPalettesLoop  ; Branch to LoadPalettesLoop if compare was Not Equal to zero
                         ; if compare was equal to 32, keep going down
-
+  
+  LDA #LOW(Background)
+  STA backgroundPointer
+  LDA #HIGH(Background)
+  STA backgroundPointer
+  JSR LoadBackground
+						
   LDA #$80
   STA PLAYERSPRITES
   STA PLAYERSPRITES + 3
@@ -129,10 +142,10 @@ LoadPalettesLoop:
   STA flipCooldown
   STA playerStatus
 			
-  LDA #%10000000   ; enable NMI, sprites from Pattern Table 0
+  LDA #%10010000   ; enable NMI, sprites from Pattern Table 0
   STA PPUCTRL
 
-  LDA #%00010000   ; enable sprites
+  LDA #%00011110   ; enable sprites, enable background, no clipping on left side
   STA PPUMASK
   
 Forever:
@@ -283,9 +296,91 @@ ReadControllerLoop:
   BNE ReadControllerLoop
   RTS
 
+LoadBackground:
+  LDA PPUSTATUS
+  LDA #$00
+  STA PPUADDR
+  LDA #$20
+  STA PPUADDR
+  
+  LDX #$00
+  LDY #$00
+  
+LoadBackgroundLoop:
+  LDA [backgroundPointer], Y ;Get metatitle number
+  CMP #$FF ;Indicates end of background data, so loading this means there is no more background to load
+  BEQ LoadBackgroundDone
+  
+  STY yData ;save place in background data
+  
+  ASL A ;Table of addresses so must jump by twos
+  TAY
+  LDA [Metatiles], Y
+  STA metatilePointer
+  INY
+  LDA [Metatiles], Y
+  STA metatilePointer
+  
+  LDY yData
+  
+  INY
+  LDA [backgroundPointer], Y ;Get number of repetitions
+  STA metatileRepeat
+  STY yData
+  LDY #$00
+  LDX #$00
+  
+  
+LoadRepeatMetatileLoop:
+  LDA [metatilePointer], Y ;Get tile number
+  STA PPUDATA
+  INX
+  LDA [metatilePointer], Y
+  STA PPUDATA
+  INX
+  LDA [metatilePointer], Y ;Store second row of tiles in buffer
+  STA rowBuffer, X
+  INY
+  INX
+  LDA [metatilePointer], Y
+  STA rowBuffer, X
+  
+  INC metatitlesDrawn
+  LDA metatilesDrawn
+  CMP #$10
+  BNE LoadRepeatMetatileLoop ;If rowBuffer is full and needs to be copied into the PPU
+  
+  CMP metatileRepeat
+  BEQ PrepForNextLoop
+  
+  LDY #$00
+LoadBufferLoop:
+  LDA [rowBuffer], Y
+  STA PPUDATA
+  INY
+  CPY #$10
+  BNE LoadBufferLoop
+  
+  JMP LoadRepeatMetatileLoop
+  
+PrepForNextLoop: ;advance counter and load it in before starting next loop
+  LDA yData
+  INY
+  JMP LoadBackgroundLoop
+  
+  
+LoadBackgroundDone:
+  RTS
 	
   .bank 1
   .org $E000
+  
+Background:
+  .db $08,$10 ;Row of ground internal
+  .db $01,$10 ;Row of Ground down
+  .db $09,$B0 ;Fill screen with blank
+  .db $00,$10 ;Row of ground up
+  .db $08,$10 ;Row of ground internal
   
 GroundUp:
   .db $00,$01
@@ -322,6 +417,10 @@ GroundTRCorner:
 GroundInternal:
   .db $10,$11
   .db $11,$10
+  
+Blank:
+  .db $07,$07
+  .db $07,$07
   
 palette:
   .db $0F,$2D,$3D,$1F,  $0F,$36,$17,$1F,  $0F,$30,$21,$1F,  $0F,$27,$17,$1F   ;;background palette
