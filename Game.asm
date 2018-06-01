@@ -305,8 +305,10 @@ LoadBackground:
   
   LDX #$00
   LDY #$00
+  STY yData
   
 LoadBackgroundLoop:
+  LDY yData
   LDA [backgroundPointer], Y ;Get metatitle number
   CMP #$FF ;Indicates end of background data, so loading this means there is no more background to load
   BEQ LoadBackgroundDone
@@ -326,16 +328,14 @@ LoadBackgroundLoop:
   INY
   LDA [backgroundPointer], Y ;Get number of repetitions
   STA metatileRepeat
+  INY
   STY yData
   LDY #$00
   LDX #$00
   
   
 LoadRepeatMetatileLoop:
-  LDA metatilesDrawn
-  CMP metatileRepeat
-  BEQ PrepForNextLoop
-
+  
   LDA [metatilePointer], Y ;Get tile number
   STA PPUDATA
   INY
@@ -355,9 +355,15 @@ LoadRepeatMetatileLoop:
   CMP #$10
   BNE LoadRepeatMetatileLoop ;If rowBuffer is full and needs to be copied into the PPU
   
-  ;CMP metatileRepeat ;REMEMBER TO REINSERT THIS AT A LATER POINT IN THE SUBROUTINE, IS TOO EARLY HERE
-  ;BEQ PrepForNextLoop
+  JSR LoadBuffer
   
+  CMP metatileRepeat
+  BEQ LoadBackgroundLoop
+  
+LoadBackgroundDone:
+  RTS
+  
+LoadBuffer:
   LDY #$00
 LoadBufferLoop:
   LDA [rowBuffer], Y
@@ -366,17 +372,8 @@ LoadBufferLoop:
   CPY #$10
   BNE LoadBufferLoop
   
-  JMP LoadRepeatMetatileLoop
-  
-PrepForNextLoop: ;advance counter and load it in before starting next loop
-  LDY yData
-  INY
-  JMP LoadBackgroundLoop
-  
-  
-LoadBackgroundDone:
   RTS
-	
+  
   .bank 1
   .org $E000
   
