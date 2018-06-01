@@ -17,7 +17,7 @@ rowBuffer .rs 32
 backgroundPointer .rs 1
 metatilePointer .rs 1
 metatileRepeat .rs 1
-metatitlesDrawn .rs 1
+metatilesDrawn .rs 1
 yData .rs 1
 
 ;Metatile lookup table
@@ -100,7 +100,7 @@ LoadPalettesLoop:
   LDA #LOW(Background)
   STA backgroundPointer
   LDA #HIGH(Background)
-  STA backgroundPointer
+  STA backgroundPointer+1
   JSR LoadBackground
 						
   LDA #$80
@@ -298,9 +298,9 @@ ReadControllerLoop:
 
 LoadBackground:
   LDA PPUSTATUS
-  LDA #$00
-  STA PPUADDR
   LDA #$20
+  STA PPUADDR ;Set PPU address to $2000
+  LDA #$00
   STA PPUADDR
   
   LDX #$00
@@ -314,11 +314,11 @@ LoadBackgroundLoop:
   STY yData ;save place in background data
   
   ASL A ;Table of addresses so must jump by twos
-  TAY
-  LDA [Metatiles], Y
+  TAX
+  LDA Metatiles, Y
   STA metatilePointer
   INY
-  LDA [Metatiles], Y
+  LDA Metatiles, Y
   STA metatilePointer
   
   LDY yData
@@ -332,26 +332,31 @@ LoadBackgroundLoop:
   
   
 LoadRepeatMetatileLoop:
+  LDA metatilesDrawn
+  CMP metatileRepeat
+  BEQ PrepForNextLoop
+
   LDA [metatilePointer], Y ;Get tile number
   STA PPUDATA
-  INX
+  INY
   LDA [metatilePointer], Y
   STA PPUDATA
-  INX
+  INY
   LDA [metatilePointer], Y ;Store second row of tiles in buffer
   STA rowBuffer, X
   INY
   INX
   LDA [metatilePointer], Y
   STA rowBuffer, X
+  INX
   
-  INC metatitlesDrawn
+  INC metatilesDrawn
   LDA metatilesDrawn
   CMP #$10
   BNE LoadRepeatMetatileLoop ;If rowBuffer is full and needs to be copied into the PPU
   
-  CMP metatileRepeat
-  BEQ PrepForNextLoop
+  ;CMP metatileRepeat ;REMEMBER TO REINSERT THIS AT A LATER POINT IN THE SUBROUTINE, IS TOO EARLY HERE
+  ;BEQ PrepForNextLoop
   
   LDY #$00
 LoadBufferLoop:
@@ -364,7 +369,7 @@ LoadBufferLoop:
   JMP LoadRepeatMetatileLoop
   
 PrepForNextLoop: ;advance counter and load it in before starting next loop
-  LDA yData
+  LDY yData
   INY
   JMP LoadBackgroundLoop
   
@@ -381,6 +386,7 @@ Background:
   .db $09,$B0 ;Fill screen with blank
   .db $00,$10 ;Row of ground up
   .db $08,$10 ;Row of ground internal
+  .db $FF ;End of data marker
   
 GroundUp:
   .db $00,$01
