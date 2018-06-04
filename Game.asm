@@ -14,24 +14,11 @@ playerStatus .rs 1 ;bit 1: 0 is facing right, 1 is facing left
 buttons .rs 1
 flipCooldown .rs 1
 rowBuffer .rs 32
-backgroundPointer .rs 1
-metatilePointer .rs 1
+backgroundPointer .rs 2
+metatilePointer .rs 2
 metatileRepeat .rs 1
 metatilesDrawn .rs 1
 yData .rs 1
-
-;Metatile lookup table
-Metatiles:
-  .dw GroundUp
-  .dw GroundDown
-  .dw GroundLeft
-  .dw GroundRight
-  .dw GroundBLCorner
-  .dw GroundBRCorner
-  .dw GroundTLCorner
-  .dw GroundTRCorner
-  .dw GroundInternal
-  .dw Blank
 
 ;; DECLARE SOME CONSTANTS HERE
 PPUCTRL = $2000
@@ -316,12 +303,12 @@ LoadBackgroundLoop:
   STY yData ;save place in background data
   
   ASL A ;Table of addresses so must jump by twos
-  TAX
+  TAY
   LDA Metatiles, Y
   STA metatilePointer
   INY
   LDA Metatiles, Y
-  STA metatilePointer
+  STA metatilePointer+1
   
   LDY yData
   
@@ -384,6 +371,19 @@ Background:
   .db $00,$10 ;Row of ground up
   .db $08,$10 ;Row of ground internal
   .db $FF ;End of data marker
+  
+;Metatile lookup table
+Metatiles:
+  .dw GroundUp
+  .dw GroundDown
+  .dw GroundLeft
+  .dw GroundRight
+  .dw GroundBLCorner
+  .dw GroundBRCorner
+  .dw GroundTLCorner
+  .dw GroundTRCorner
+  .dw GroundInternal
+  .dw Blank
   
 GroundUp:
   .db $00,$01
