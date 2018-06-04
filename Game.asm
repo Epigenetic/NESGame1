@@ -14,6 +14,7 @@ playerStatus .rs 1 ;bit 1: 0 is facing right, 1 is facing left
 buttons .rs 1
 flipCooldown .rs 1
 rowBuffer .rs 32
+bufferIndex .rs 1
 backgroundPointer .rs 2
 metatilePointer .rs 2
 metatileRepeat .rs 1
@@ -293,6 +294,7 @@ LoadBackground:
   LDX #$00
   LDY #$00
   STY yData
+  STY bufferIndex
   
 LoadBackgroundLoop:
   LDY yData
@@ -319,10 +321,12 @@ LoadBackgroundLoop:
   STY yData
   LDY #$00
   LDX #$00
+  STY metatilesDrawn
   
   
 LoadRepeatMetatileLoop:
   
+  LDX bufferIndex
   LDA [metatilePointer], Y ;Get tile number
   STA PPUDATA
   INY
@@ -336,22 +340,27 @@ LoadRepeatMetatileLoop:
   LDA [metatilePointer], Y
   STA rowBuffer, X
   INX
+  STX bufferIndex
   
   INC metatilesDrawn
-  LDA metatilesDrawn
-  CMP #$10
-  BNE LoadRepeatMetatileLoop ;If rowBuffer is full and needs to be copied into the PPU
+  LDA bufferIndex
+  CMP #$20
+  BNE ContinueRepeatMetatileLoop;If rowBuffer is full and needs to be copied into the PPU
   
   JSR LoadBuffer
-  
+
+ContinueRepeatMetatileLoop:
+  LDA metatilesDrawn
   CMP metatileRepeat
   BEQ LoadBackgroundLoop
+  JMP LoadRepeatMetatileLoop
   
 LoadBackgroundDone:
   RTS
   
 LoadBuffer:
   LDY #$00
+  STY bufferIndex
 LoadBufferLoop:
   LDA [rowBuffer], Y
   STA PPUDATA
