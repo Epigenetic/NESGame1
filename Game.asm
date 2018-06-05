@@ -14,11 +14,11 @@ playerStatus .rs 1 ;bit 1: 0 is facing right, 1 is facing left
 buttons .rs 1
 flipCooldown .rs 1
 rowBuffer .rs 32
-bufferIndex .rs 1
 backgroundPointer .rs 2
 metatilePointer .rs 2
 metatileRepeat .rs 1
 metatilesDrawn .rs 1
+xData .rs 1
 yData .rs 1
 
 ;; DECLARE SOME CONSTANTS HERE
@@ -294,7 +294,7 @@ LoadBackground:
   LDX #$00
   LDY #$00
   STY yData
-  STY bufferIndex
+  STY xData
   
 LoadBackgroundLoop:
   LDY yData
@@ -326,7 +326,7 @@ LoadBackgroundLoop:
   
 LoadRepeatMetatileLoop:
   
-  LDX bufferIndex
+  LDX xData
   LDA [metatilePointer], Y ;Get tile number
   STA PPUDATA
   INY
@@ -340,12 +340,13 @@ LoadRepeatMetatileLoop:
   LDA [metatilePointer], Y
   STA rowBuffer, X
   INX
-  STX bufferIndex
+  STX xData
+  LDY #$00
   
   INC metatilesDrawn
-  LDA bufferIndex
+  LDA xData
   CMP #$20
-  BNE ContinueRepeatMetatileLoop;If rowBuffer is full and needs to be copied into the PPU
+  BNE ContinueRepeatMetatileLoop ;If rowBuffer is full and needs to be copied into the PPU
   
   JSR LoadBuffer
 
@@ -359,13 +360,13 @@ LoadBackgroundDone:
   RTS
   
 LoadBuffer:
-  LDY #$00
-  STY bufferIndex
+  ;LDY #$00
+  STY xData ;Y will already be zeroed out so only setup left is to clear xData
 LoadBufferLoop:
-  LDA [rowBuffer], Y
+  LDA rowBuffer, Y
   STA PPUDATA
   INY
-  CPY #$10
+  CPY #$20
   BNE LoadBufferLoop
   
   RTS
