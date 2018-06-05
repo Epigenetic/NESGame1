@@ -369,6 +369,7 @@ LoadBufferLoop:
   CPY #$20
   BNE LoadBufferLoop
   
+  LDY #$00
   RTS
   
   .bank 1
