@@ -400,7 +400,24 @@ PlayerFall:
   LSR A
   STA nameTableAddress + 1
   
-  LDA playerY ;NEED TO ADD CHECK FOR ORIENTATION TO GET CORRECT COORDINATE
+  LDA playerStatus
+  AND #%00000001
+  BEQ IncrementPlayerY
+  JMP DontIncrementPlayerY
+  
+IncrementPlayerY:
+  LDA playerY
+  CLC
+  ADC #$12
+  JMP IncrementDone
+  
+DontIncrementPlayerY:
+  LDA playerY
+  SEC
+  SBC #$01
+  
+IncrementDone:
+  
   AND #%11111000 ;Avoid having to LSR 3 times to get rid of that information since would then have to ASL 5 times
   ASL A
   ROL nameTableAddress
