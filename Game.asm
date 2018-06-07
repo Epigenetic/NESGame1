@@ -14,19 +14,23 @@ playerStatus .rs 1 ;bit 1: 0 is facing right, 1 is facing left
 buttons .rs 1
 flipCooldown .rs 1
 
-rowBuffer .rs 32
+rowBuffer .rs 32 ;Buffer filled with tile data when drawing metatiles
 
-backgroundPointer .rs 2
+backgroundPointer .rs 2 ;Pointer to background to be drawn
 
 metatilePointer .rs 2
 metatileRepeat .rs 1
 metatilesDrawn .rs 1
 
-xData .rs 1
+xData .rs 1 ;Place to store content of registers
 yData .rs 1
 
-playerX .rs 1
+playerX .rs 1 ;Player's current X and Y coordinates
 playerY .rs 1
+
+scroll .rs 1
+nameTableAddress .rs 2
+nameTable .rs 1
 
 ;; DECLARE SOME CONSTANTS HERE
 PPUCTRL = $2000
@@ -185,6 +189,8 @@ MoveRight:
   JSR MovePlayerRight
 
 DontTurnRight:
+
+  JSR PlayerFall
   
   JSR UpdatePlayerSprites
   RTI
@@ -374,6 +380,70 @@ UpdatePlayerSprites:
   ADC #$08
   STA PLAYERSPRITES + 8
   STA PLAYERSPRITES + 12
+  
+  RTS
+  
+PlayerFall:
+  
+  LDA #$00
+  STA nameTableAddress ;Clear high byte of address
+  
+  LDA playerX
+  LSR A
+  LSR A
+  LSR A
+  STA nameTableAddress + 1
+  
+  LDA playerY ;NEED TO ADD CHECK FOR ORIENTATION TO GET CORRECT COORDINATE
+  AND #%11111000 ;Avoid having to LSR 3 times to get rid of that information since would then have to ASL 5 times
+  ASL A
+  ROL nameTableAddress
+  ASL A
+  ROL nameTableAddress ;Multiply by 4, move bits into high byte of address
+  CLC
+  ADC nameTableAddress + 1 ;Add result to existing address
+  STA nameTableAddress + 1
+  LDA nameTableAddress
+  ADC #$00
+  STA nameTableAddress ;Add any potential carry
+  
+  LDA nameTable
+  ASL A
+  ASL A
+  CLC
+  ADC nameTableAddress
+  CLC 
+  ADC #$20
+  STA nameTableAddress
+  
+  LDA PPUSTATUS
+  LDA nameTableAddress
+  STA PPUADDR
+  LDA nameTableAddress + 1
+  STA PPUADDR
+  
+  LDA PPUDATA
+  CMP #$07 ;Check if Player is on ground or not
+  BNE FallDone
+  
+  LDA playerStatus
+  AND #%00000001
+  BEQ FallDown
+  
+FallUp:
+  LDA playerY
+  SEC
+  SBC #$01
+  STA playerY
+  JMP FallDone
+  
+FallDown:
+  LDA playerY
+  CLC
+  ADC #$01
+  STA playerY
+  
+FallDone:
   
   RTS
   
