@@ -37,6 +37,7 @@ PPUCTRL = $2000
 PPUMASK = $2001
 PPUSTATUS = $2002
 OAMADDR = $2003
+PPUSCROLL = $2005
 PPUADDR = $2006
 PPUDATA = $2007
 OAMDMA = $4014
@@ -191,6 +192,11 @@ MoveRight:
 DontTurnRight:
 
   JSR PlayerFall
+  
+  LDA scroll
+  STA PPUSCROLL
+  LDA #$00
+  STA PPUSCROLL
   
   JSR UpdatePlayerSprites
   RTI
