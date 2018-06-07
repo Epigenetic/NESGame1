@@ -13,13 +13,20 @@ playerStatus .rs 1 ;bit 1: 0 is facing right, 1 is facing left
 				   ;bit 0:0 is normal, 1 is up
 buttons .rs 1
 flipCooldown .rs 1
+
 rowBuffer .rs 32
+
 backgroundPointer .rs 2
+
 metatilePointer .rs 2
 metatileRepeat .rs 1
 metatilesDrawn .rs 1
+
 xData .rs 1
 yData .rs 1
+
+playerX .rs 1
+playerY .rs 1
 
 ;; DECLARE SOME CONSTANTS HERE
 PPUCTRL = $2000
@@ -92,39 +99,28 @@ LoadPalettesLoop:
   JSR LoadBackground
 						
   LDA #$80
-  STA PLAYERSPRITES
-  STA PLAYERSPRITES + 3
+  STA playerY
+  STA playerX
+  
   LDA #$00
   STA PLAYERSPRITES + 1
   STA PLAYERSPRITES + 2
   LDA #$80
   
-  LDA #$80
-  STA PLAYERSPRITES + 4
   LDA #$01
   STA PLAYERSPRITES + 5
   LDA #$00
   STA PLAYERSPRITES + 6
-  LDA #$88
-  STA PLAYERSPRITES + 7
   
-  LDA #$88
-  STA PLAYERSPRITES + 8
   LDA #$10
   STA PLAYERSPRITES + 9
   LDA #$00
   STA PLAYERSPRITES + 10
-  LDA #$80
-  STA PLAYERSPRITES + 11
   
-  LDA #$88
-  STA PLAYERSPRITES + 12
   LDA #$11
   STA PLAYERSPRITES + 13
   LDA #$00
   STA PLAYERSPRITES + 14
-  LDA #$88
-  STA PLAYERSPRITES + 15
   
   LDA #$00
   STA flipCooldown
@@ -190,34 +186,23 @@ MoveRight:
 
 DontTurnRight:
   
+  JSR UpdatePlayerSprites
   RTI
   
 MovePlayerLeft:
-  LDA PLAYERSPRITES + 3
+  LDA playerX
   SEC
   SBC #$01
-  STA PLAYERSPRITES + 3
-  STA PLAYERSPRITES + 11
+  STA playerX
   
-  LDA PLAYERSPRITES + 7
-  SEC
-  SBC #$01
-  STA PLAYERSPRITES + 7
-  STA PLAYERSPRITES + 15
   RTS
   
 MovePlayerRight
-  LDA PLAYERSPRITES + 3
+  LDA playerX
   CLC
   ADC #$01
-  STA PLAYERSPRITES + 3
-  STA PLAYERSPRITES + 11
+  STA playerX
   
-  LDA PLAYERSPRITES + 7
-  CLC
-  ADC #$01
-  STA PLAYERSPRITES + 7
-  STA PLAYERSPRITES + 15
   RTS
 TurnPlayer:
  LDA PLAYERSPRITES + 1
@@ -370,6 +355,26 @@ LoadBufferLoop:
   BNE LoadBufferLoop
   
   LDY #$00
+  RTS
+  
+UpdatePlayerSprites:
+  
+  LDA playerX
+  STA PLAYERSPRITES + 3
+  STA PLAYERSPRITES + 11
+  CLC
+  ADC #$08
+  STA PLAYERSPRITES + 7
+  STA PLAYERSPRITES + 15
+  
+  LDA playerY
+  STA PLAYERSPRITES
+  STA PLAYERSPRITES + 4
+  CLC
+  ADC #$08
+  STA PLAYERSPRITES + 8
+  STA PLAYERSPRITES + 12
+  
   RTS
   
   .bank 1
