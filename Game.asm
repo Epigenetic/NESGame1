@@ -473,26 +473,75 @@ FallDone:
   .bank 1
   .org $E000
   
-Background:
-  .db $08,$10 ;Row of ground internal
-  .db $01,$10 ;Row of Ground down
-  .db $09,$B0 ;Fill screen with blank
-  .db $00,$10 ;Row of ground up
-  .db $08,$10 ;Row of ground internal
-  .db $FF ;End of data marker
+TestLevel1:
+  .dw Column1_1,Column1_2,Column1_3,Column1_4,Column1_5,Column1_6,Column1_7,Column1_8
+  .dw Column1_9,Column1_10,Column1_11,Column1_12,Column1_13,Column1_14,Column1_15,Column1_16
+  
+Column1_1:
+  .db $08,$0D,$83,$0A,$0B,$08
+  
+Column1_2:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_3:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_4:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_5:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_6:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_7:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_8:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_9:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_10:
+  .db $08,$01,$89,$07,$06,$82,$01,$0D,$08
+  
+Column1_11:
+  .db $08,$01,$89,$07,$00,$88,$03
+  
+Column1_12:
+  .db $08,$01,$89,$07,$00,$88,$03
+
+Column1_13:
+  .db $08,$01,$89,$07,$00,$88,$03
+
+Column1_14:
+  .db $08,$01,$89,$07,$00,$88,$03
+
+Column1_15:
+  .db $08,$01,$89,$07,$00,$88,$03
+
+Column1_16:
+  .db $08,$01,$89,$07,$00,$88,$03
+
   
 ;Metatile lookup table
 Metatiles:
-  .dw GroundUp
-  .dw GroundDown
-  .dw GroundLeft
-  .dw GroundRight
-  .dw GroundBLCorner
-  .dw GroundBRCorner
-  .dw GroundTLCorner
-  .dw GroundTRCorner
-  .dw GroundInternal
-  .dw Blank
+  .dw GroundUp  ;$00
+  .dw GroundDown  ;$01
+  .dw GroundLeft  ;$02
+  .dw GroundRight  ;$03
+  .dw GroundBLCorner  ;$04
+  .dw GroundBRCorner  ;$05
+  .dw GroundTLCorner  ;$06
+  .dw GroundTRCorner  ;$07
+  .dw GroundInternal  ;$08
+  .dw Blank  ;$09
+  .dw InternalTLCorner  ;$0A
+  .dw InternalTRCorner  ;$0B
+  .dw InternalBLCorner  ;$0C
+  .dw InternalBRCorner  ;$0D
   
 GroundUp:
   .db $00,$01
@@ -531,8 +580,24 @@ GroundInternal:
   .db $11,$10
   
 Blank:
-  .db $07,$07
-  .db $07,$07
+  .db $09,$09
+  .db $09,$09
+  
+InternalTLCorner:
+  .db $07,$10
+  .db $10,$11
+ 
+InternalTRCorner:
+  .db $11,$08
+  .db $10,$11
+  
+InternalBLCorner:
+  .db $17,$11
+  .db $11,$10
+  
+InternalBRCorner:
+  .db $10,$18
+  .db $11,$10
   
 palette:
   .db $0F,$2D,$3D,$1F,  $0F,$36,$17,$1F,  $0F,$30,$21,$1F,  $0F,$27,$17,$1F   ;;background palette
