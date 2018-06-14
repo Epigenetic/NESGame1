@@ -14,7 +14,7 @@ playerStatus .rs 1 ;bit 1: 0 is facing right, 1 is facing left
 buttons .rs 1
 flipCooldown .rs 1
 
-rowBuffer .rs 32 ;Buffer filled with tile data when drawing metatiles
+colBuffer .rs 30 ;Buffer filled with tile data when drawing metatiles
 
 backgroundPointer .rs 2 ;Pointer to background to be drawn
 
@@ -31,6 +31,9 @@ playerY .rs 1
 scroll .rs 1
 nameTableAddress .rs 2
 nameTable .rs 1
+
+pointer1 .rs 2
+level .rs 1 ;Level to load
 
 ;; DECLARE SOME CONSTANTS HERE
 PPUCTRL = $2000
@@ -193,6 +196,13 @@ DontTurnRight:
 
   JSR PlayerFall
   
+  ;Make sure PPU is in desired state before drawing next frame
+  LDA #%10010000   ; enable NMI, sprites from Pattern Table 0
+  STA PPUCTRL
+
+  LDA #%00011110   ; enable sprites, enable background, no clipping on left side
+  STA PPUMASK
+  
   LDA scroll
   STA PPUSCROLL
   LDA #$00
@@ -287,39 +297,50 @@ LoadBackground:
   STA PPUADDR ;Set PPU address to $2000
   LDA #$00
   STA PPUADDR
+  LDA #%00000100 ;Put PPU in 32 increment mode
+  STA PPUCTRL
   
   LDX #$00
   LDY #$00
   STY yData
   STY xData
   
-LoadBackgroundLoop:
-  LDY yData
-  LDA [backgroundPointer], Y ;Get metatitle number
-  CMP #$FF ;Indicates end of background data, so loading this means there is no more background to load
-  BEQ LoadBackgroundDone
-  
-  STY yData ;save place in background data
-  
-  ASL A ;Table of addresses so must jump by twos
+  LDA level
+  ASL A
   TAY
-  LDA Metatiles, Y
-  STA metatilePointer
+  LDA LevelIndex, Y
+  STA pointer1
   INY
-  LDA Metatiles, Y
-  STA metatilePointer+1
+  LDA LevelIndex, Y
+  STA pointer1 + 1  ;pointer1 now contains position of selected level's background index
+  
+  LDY #$00
+  LDA [pointer1], Y
+  STA backgroundPointer
+  INY
+  LDA [pointer1], Y
+  STA backgroundPointer + 1;backgroundPointer now contains position of selected level's first screen's column index
+  
+LoadColumnLoop:
+  LDA yData
+  ASL A
+  TAY
+  LDA [backgroundPointer], Y
+  STA pointer1
+  INY
+  LDA [backgroundPointer], Y
+  STA pointer1 + 1;Pointer 1 now has the column data
+  
+  ;JSR load column data
   
   LDY yData
+  CMP #$10
+  BNE LoadColumnLoop
   
-  INY
-  LDA [backgroundPointer], Y ;Get number of repetitions
-  STA metatileRepeat
-  INY
-  STY yData
-  LDY #$00
-  LDX #$00
-  STY metatilesDrawn
-  
+LoadBackgroundDone:
+  RTS
+;Draw background, (draw 32 columns)
+  ;Draw column
   
 LoadRepeatMetatileLoop:
   
@@ -331,18 +352,18 @@ LoadRepeatMetatileLoop:
   STA PPUDATA
   INY
   LDA [metatilePointer], Y ;Store second row of tiles in buffer
-  STA rowBuffer, X
+  STA colBuffer, X
   INY
   INX
   LDA [metatilePointer], Y
-  STA rowBuffer, X
+  STA colBuffer, X
   INX
   STX xData
   LDY #$00
   
   INC metatilesDrawn
-  LDA xData
-  CMP #$20
+  ;LDA xData ;Shouldn't have to worry about filling the buffer while drawing repeat metatiles with column format
+  ;CMP #$1E
   BNE ContinueRepeatMetatileLoop ;If rowBuffer is full and needs to be copied into the PPU
   
   JSR LoadBuffer
@@ -353,9 +374,6 @@ ContinueRepeatMetatileLoop:
   BEQ LoadBackgroundLoop
   JMP LoadRepeatMetatileLoop
   
-LoadBackgroundDone:
-  RTS
-  
 LoadBuffer:
   ;LDY #$00
   STY xData ;Y will already be zeroed out so only setup left is to clear xData
@@ -363,7 +381,7 @@ LoadBufferLoop:
   LDA rowBuffer, Y
   STA PPUDATA
   INY
-  CPY #$20
+  CPY #$1E
   BNE LoadBufferLoop
   
   LDY #$00
@@ -472,6 +490,15 @@ FallDone:
   
   .bank 1
   .org $E000
+
+LevelIndex:
+  .dw TestLevelBackgroundIndex,TestLevelAttributeIndex
+  
+TestLevelBackgroundIndex:
+  .dw TestLevel1
+  
+TestLevelAttributeIndex:
+  .dw TestLevelAttribute1
   
 TestLevel1:
   .dw Column1_1,Column1_2,Column1_3,Column1_4,Column1_5,Column1_6,Column1_7,Column1_8
@@ -524,7 +551,33 @@ Column1_15:
 
 Column1_16:
   .db $08,$01,$89,$07,$00,$88,$03
+  
+TestLevelAttribute1:
+  .dw Attribute1_1,Attribute1_2,Attribute1_3,Attribute1_4,Attribute1_5,Attribute1_6,Attribute1_7,Attribute1_8
+  
+Attribute1_1:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
 
+Attribute1_2:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+
+Attribute1_3:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+
+Attribute1_4:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+  
+Attribute1_5:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+
+Attribute1_6:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+  
+Attribute1_7:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+
+Attribute1_8:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
   
 ;Metatile lookup table
 Metatiles:
