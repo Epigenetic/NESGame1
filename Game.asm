@@ -354,7 +354,7 @@ LoadColumnData:
   STA metatilePointer
   INY
   LDA Metatiles, Y
-  STA metatilePointer
+  STA metatilePointer + 1
   
   BCS MultipleRepeatSetup
   
@@ -375,7 +375,7 @@ SetupDone:
   
   JSR LoadRepeatMetatileLoop
   
-  LDA xData
+  LDA xData ;Whether or not the buffer is full (column loaded)
   CMP #$1E
   BNE LoadColumnData
 
@@ -384,7 +384,7 @@ SetupDone:
   RTS
   
 LoadRepeatMetatileLoop:
-  
+  LDY #$00
   LDX xData
   LDA [metatilePointer], Y ;Get tile number
   STA PPUDATA
@@ -409,7 +409,7 @@ LoadRepeatMetatileLoop:
   
   ;JSR LoadBuffer
 
-ContinueRepeatMetatileLoop:
+;ContinueRepeatMetatileLoop:
   LDA metatilesDrawn
   CMP metatileRepeat
   BNE LoadRepeatMetatileLoop
