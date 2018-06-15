@@ -19,8 +19,8 @@ colBuffer .rs 30 ;Buffer filled with tile data when drawing metatiles
 backgroundPointer .rs 2 ;Pointer to background to be drawn
 
 metatilePointer .rs 2
-metatileRepeat .rs 1
-metatilesDrawn .rs 1
+metatileRepeat .rs 1 ;Number of repeat metatiles to draw
+metatilesDrawn .rs 1 ;Number of metatiles drawn (for tracking when drawing repeat metatiles)
 
 xData .rs 1 ;Place to store content of registers
 yData .rs 1
@@ -34,6 +34,7 @@ nameTable .rs 1
 
 pointer1 .rs 2
 level .rs 1 ;Level to load
+colProgress .rs 1;Progress in column being loaded
 
 ;; DECLARE SOME CONSTANTS HERE
 PPUCTRL = $2000
@@ -100,10 +101,8 @@ LoadPalettesLoop:
   BNE LoadPalettesLoop  ; Branch to LoadPalettesLoop if compare was Not Equal to zero
                         ; if compare was equal to 32, keep going down
   
-  LDA #LOW(Background)
-  STA backgroundPointer
-  LDA #HIGH(Background)
-  STA backgroundPointer+1
+  LDA #$00
+  STA level
   JSR LoadBackground
 						
   LDA #$80
@@ -307,6 +306,7 @@ LoadBackground:
   
   LDA level
   ASL A
+  ASL A ;Each entry is 4 bytes long, multiply by 4 to get the appropriate location
   TAY
   LDA LevelIndex, Y
   STA pointer1
@@ -322,25 +322,66 @@ LoadBackground:
   STA backgroundPointer + 1;backgroundPointer now contains position of selected level's first screen's column index
   
 LoadColumnLoop:
-  LDA yData
+  LDA yData ;Current column
   ASL A
   TAY
   LDA [backgroundPointer], Y
   STA pointer1
   INY
   LDA [backgroundPointer], Y
-  STA pointer1 + 1;Pointer 1 now has the column data
+  STA pointer1 + 1;Pointer 1 now has the column data address
   
-  ;JSR load column data
+  LDA #$00
+  STA colProgress
+  JSR LoadColumnData
   
   LDY yData
-  CMP #$10
+  INY
+  STY yData
+  CPY #$10
   BNE LoadColumnLoop
   
 LoadBackgroundDone:
   RTS
-;Draw background, (draw 32 columns)
-  ;Draw column
+  
+LoadColumnData:
+  LDY colProgress
+  LDA [pointer1], Y
+  
+  ASL A
+  TAY
+  LDA Metatiles, Y 
+  STA metatilePointer
+  INY
+  LDA Metatiles, Y
+  STA metatilePointer
+  
+  BCS MultipleRepeatSetup
+  
+SingleRepeatSetup:
+  LDA #$01
+  STA metatileRepeat
+  JMP SetupDone
+  
+MultipleRepeatSetup:
+  LDY colProgress
+  INY
+  STY colProgress
+  LDA [pointer1], Y
+  STA metatileRepeat
+  
+SetupDone:
+  INC colProgress
+  
+  JSR LoadRepeatMetatileLoop
+  
+  LDA xData
+  CMP #$1E
+  BNE LoadColumnData
+
+  JSR LoadBuffer
+  
+  RTS
   
 LoadRepeatMetatileLoop:
   
@@ -362,23 +403,24 @@ LoadRepeatMetatileLoop:
   LDY #$00
   
   INC metatilesDrawn
-  ;LDA xData ;Shouldn't have to worry about filling the buffer while drawing repeat metatiles with column format
+  ;LDA xData 
   ;CMP #$1E
-  BNE ContinueRepeatMetatileLoop ;If rowBuffer is full and needs to be copied into the PPU
+  ;BNE ContinueRepeatMetatileLoop ;If rowBuffer is full and needs to be copied into the PPU
   
-  JSR LoadBuffer
+  ;JSR LoadBuffer
 
 ContinueRepeatMetatileLoop:
   LDA metatilesDrawn
   CMP metatileRepeat
-  BEQ LoadBackgroundLoop
-  JMP LoadRepeatMetatileLoop
+  BNE LoadRepeatMetatileLoop
+  
+  RTS
   
 LoadBuffer:
-  ;LDY #$00
+  LDY #$00
   STY xData ;Y will already be zeroed out so only setup left is to clear xData
 LoadBufferLoop:
-  LDA rowBuffer, Y
+  LDA colBuffer, Y
   STA PPUDATA
   INY
   CPY #$1E
