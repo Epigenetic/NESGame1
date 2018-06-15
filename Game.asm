@@ -373,6 +373,9 @@ MultipleRepeatSetup:
 SetupDone:
   INC colProgress
   
+  LDA #$00
+  STA metatilesDrawn ;Reset count for the new loop
+  
   JSR LoadRepeatMetatileLoop
   
   LDA xData ;Whether or not the buffer is full (column loaded)
@@ -400,7 +403,7 @@ LoadRepeatMetatileLoop:
   STA colBuffer, X
   INX
   STX xData
-  LDY #$00
+  ;LDY #$00
   
   INC metatilesDrawn
   ;LDA xData 
@@ -687,12 +690,12 @@ InternalTRCorner:
   .db $10,$11
   
 InternalBLCorner:
-  .db $17,$11
   .db $11,$10
+  .db $17,$11
   
 InternalBRCorner:
-  .db $10,$18
-  .db $11,$10
+  .db $10,$11
+  .db $11,$18
   
 palette:
   .db $0F,$2D,$3D,$1F,  $0F,$36,$17,$1F,  $0F,$30,$21,$1F,  $0F,$27,$17,$1F   ;;background palette
