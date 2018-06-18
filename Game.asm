@@ -359,7 +359,7 @@ LoadColumnData:
   BCS MultipleRepeatSetup
   
 SingleRepeatSetup:
-  LDA #$01
+  LDA #$00
   STA metatileRepeat
   JMP SetupDone
   
@@ -405,7 +405,6 @@ LoadRepeatMetatileLoop:
   STX xData
   ;LDY #$00
   
-  INC metatilesDrawn
   ;LDA xData 
   ;CMP #$1E
   ;BNE ContinueRepeatMetatileLoop ;If rowBuffer is full and needs to be copied into the PPU
@@ -414,6 +413,7 @@ LoadRepeatMetatileLoop:
 
 ;ContinueRepeatMetatileLoop:
   LDA metatilesDrawn
+  INC metatilesDrawn
   CMP metatileRepeat
   BNE LoadRepeatMetatileLoop
   
