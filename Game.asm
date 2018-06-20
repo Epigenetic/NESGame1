@@ -591,7 +591,7 @@ Column1_9:
   .db $08,$01,$89,$0A,$00,$08
 
 Column1_10:
-  .db $08,$01,$89,$07,$06,$82,$01,$0D,$08
+  .db $08,$01,$89,$07,$06,$82,$01,$0A,$08
   
 Column1_11:
   .db $08,$01,$89,$07,$00,$88,$03
@@ -656,36 +656,36 @@ Metatiles:
   .dw InternalBRCorner  ;$0D
   
 GroundUp:
-  .db $00,$01
-  .db $10,$11
+  .db $00,$10
+  .db $01,$11
   
 GroundDown:
-  .db $10,$11
-  .db $12,$13
+  .db $10,$12
+  .db $11,$13
   
 GroundLeft:
-  .db $02,$10
-  .db $03,$11
+  .db $02,$03
+  .db $10,$11
   
 GroundRight:
-  .db $10,$06
-  .db $11,$16
+  .db $10,$11
+  .db $06,$16
   
 GroundBLCorner:
-  .db $02,$10
-  .db $14,$12
+  .db $02,$14
+  .db $10,$12
   
 GroundBRCorner:
-  .db $11,$16
-  .db $12,$15
+  .db $11,$12
+  .db $16,$15
   
 GroundTLCorner:
-  .db $04,$01
-  .db $03,$10
+  .db $04,$03
+  .db $01,$10
   
 GroundTRCorner:
-  .db $00,$05
-  .db $11,$06
+  .db $00,$11
+  .db $05,$06
   
 GroundInternal:
   .db $10,$11
@@ -700,12 +700,12 @@ InternalTLCorner:
   .db $10,$11
  
 InternalTRCorner:
-  .db $11,$08
-  .db $10,$11
+  .db $11,$10
+  .db $08,$11
   
 InternalBLCorner:
-  .db $11,$10
-  .db $17,$11
+  .db $11,$17
+  .db $10,$11
   
 InternalBRCorner:
   .db $10,$11
