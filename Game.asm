@@ -14,13 +14,13 @@ playerStatus .rs 1 ;bit 1: 0 is facing right, 1 is facing left
 buttons .rs 1
 flipCooldown .rs 1
 
-rowBuffer .rs 32 ;Buffer filled with tile data when drawing metatiles
+colBuffer .rs 30 ;Buffer filled with tile data when drawing metatiles
 
 backgroundPointer .rs 2 ;Pointer to background to be drawn
 
 metatilePointer .rs 2
-metatileRepeat .rs 1
-metatilesDrawn .rs 1
+metatileRepeat .rs 1 ;Number of repeat metatiles to draw
+metatilesDrawn .rs 1 ;Number of metatiles drawn (for tracking when drawing repeat metatiles)
 
 xData .rs 1 ;Place to store content of registers
 yData .rs 1
@@ -31,6 +31,10 @@ playerY .rs 1
 scroll .rs 1
 nameTableAddress .rs 2
 nameTable .rs 1
+
+pointer1 .rs 2
+level .rs 1 ;Level to load
+colProgress .rs 1;Progress in column being loaded
 
 ;; DECLARE SOME CONSTANTS HERE
 PPUCTRL = $2000
@@ -97,10 +101,8 @@ LoadPalettesLoop:
   BNE LoadPalettesLoop  ; Branch to LoadPalettesLoop if compare was Not Equal to zero
                         ; if compare was equal to 32, keep going down
   
-  LDA #LOW(Background)
-  STA backgroundPointer
-  LDA #HIGH(Background)
-  STA backgroundPointer+1
+  LDA #$00
+  STA level
   JSR LoadBackground
 						
   LDA #$80
@@ -193,6 +195,13 @@ DontTurnRight:
 
   JSR PlayerFall
   
+  ;Make sure PPU is in desired state before drawing next frame
+  LDA #%10010000   ; enable NMI, sprites from Pattern Table 0
+  STA PPUCTRL
+
+  LDA #%00011110   ; enable sprites, enable background, no clipping on left side
+  STA PPUMASK
+  
   LDA scroll
   STA PPUSCROLL
   LDA #$00
@@ -282,47 +291,117 @@ ReadControllerLoop:
   RTS
 
 LoadBackground:
-  LDA PPUSTATUS
   LDA #$20
-  STA PPUADDR ;Set PPU address to $2000
+  STA nameTableAddress ;Reset name table address
   LDA #$00
-  STA PPUADDR
+  STA nameTableAddress + 1
+  LDA #%00000100 ;Put PPU in 32 increment mode
+  STA PPUCTRL
   
   LDX #$00
   LDY #$00
   STY yData
   STY xData
   
-LoadBackgroundLoop:
-  LDY yData
-  LDA [backgroundPointer], Y ;Get metatitle number
-  CMP #$FF ;Indicates end of background data, so loading this means there is no more background to load
-  BEQ LoadBackgroundDone
-  
-  STY yData ;save place in background data
-  
-  ASL A ;Table of addresses so must jump by twos
+  LDA level
+  ASL A
+  ASL A ;Each entry is 4 bytes long, multiply by 4 to get the appropriate location
   TAY
-  LDA Metatiles, Y
+  LDA LevelIndex, Y
+  STA pointer1
+  INY
+  LDA LevelIndex, Y
+  STA pointer1 + 1  ;pointer1 now contains position of selected level's background index
+  
+  LDY #$00
+  LDA [pointer1], Y
+  STA backgroundPointer
+  INY
+  LDA [pointer1], Y
+  STA backgroundPointer + 1;backgroundPointer now contains position of selected level's first screen's column index
+  
+LoadColumnLoop:
+  LDA yData ;Current column
+  ASL A
+  TAY
+  LDA [backgroundPointer], Y
+  STA pointer1
+  INY
+  LDA [backgroundPointer], Y
+  STA pointer1 + 1;Pointer 1 now has the column data address
+  
+  LDA PPUSTATUS ;Set PPU Address to correct spot
+  LDA nameTableAddress
+  STA PPUADDR
+  LDA nameTableAddress + 1
+  STA PPUADDR
+  
+  LDA #$00
+  STA colProgress
+  JSR LoadColumnData
+  
+  INC nameTableAddress + 1 ;Increment name table address in preparation for next column
+  
+  LDY yData
+  INY
+  STY yData
+  CPY #$10
+  BNE LoadColumnLoop
+  
+LoadBackgroundDone:
+  RTS
+  
+LoadColumnData:
+  LDY colProgress
+  LDA [pointer1], Y
+  
+  ASL A
+  TAY
+  LDA Metatiles, Y 
   STA metatilePointer
   INY
   LDA Metatiles, Y
-  STA metatilePointer+1
+  STA metatilePointer + 1
   
-  LDY yData
+  BCS MultipleRepeatSetup
   
-  INY
-  LDA [backgroundPointer], Y ;Get number of repetitions
+SingleRepeatSetup:
+  LDA #$00
   STA metatileRepeat
-  INY
-  STY yData
-  LDY #$00
-  LDX #$00
-  STY metatilesDrawn
+  JMP SetupDone
   
+MultipleRepeatSetup:
+  LDY colProgress
+  INY
+  STY colProgress
+  LDA [pointer1], Y
+  STA metatileRepeat
+  
+SetupDone:
+  INC colProgress
+  
+  LDA #$00
+  STA metatilesDrawn ;Reset count for the new loop
+  
+  JSR LoadRepeatMetatileLoop
+  
+  LDA xData ;Whether or not the buffer is full (column loaded)
+  CMP #$1E
+  BNE LoadColumnData
+
+  INC nameTableAddress + 1 ;Reset PPU address for drawing in from the buffer
+  LDA PPUSTATUS
+  LDA nameTableAddress
+  STA PPUADDR
+  LDA nameTableAddress + 1
+  STA PPUADDR
+  
+  JSR LoadBuffer
+  
+  RTS
   
 LoadRepeatMetatileLoop:
-  
+  LDY #$00
   LDX xData
   LDA [metatilePointer], Y ;Get tile number
   STA PPUDATA
@@ -331,39 +410,37 @@ LoadRepeatMetatileLoop:
   STA PPUDATA
   INY
   LDA [metatilePointer], Y ;Store second row of tiles in buffer
-  STA rowBuffer, X
+  STA colBuffer, X
   INY
   INX
   LDA [metatilePointer], Y
-  STA rowBuffer, X
+  STA colBuffer, X
   INX
   STX xData
-  LDY #$00
+  ;LDY #$00
   
-  INC metatilesDrawn
-  LDA xData
-  CMP #$20
-  BNE ContinueRepeatMetatileLoop ;If rowBuffer is full and needs to be copied into the PPU
+  ;LDA xData 
+  ;CMP #$1E
+  ;BNE ContinueRepeatMetatileLoop ;If rowBuffer is full and needs to be copied into the PPU
   
-  JSR LoadBuffer
+  ;JSR LoadBuffer
 
-ContinueRepeatMetatileLoop:
+;ContinueRepeatMetatileLoop:
   LDA metatilesDrawn
+  INC metatilesDrawn
   CMP metatileRepeat
-  BEQ LoadBackgroundLoop
-  JMP LoadRepeatMetatileLoop
+  BNE LoadRepeatMetatileLoop
   
-LoadBackgroundDone:
   RTS
   
 LoadBuffer:
-  ;LDY #$00
+  LDY #$00
   STY xData ;Y will already be zeroed out so only setup left is to clear xData
 LoadBufferLoop:
-  LDA rowBuffer, Y
+  LDA colBuffer, Y
   STA PPUDATA
   INY
-  CPY #$20
+  CPY #$1E
   BNE LoadBufferLoop
   
   LDY #$00
@@ -446,7 +523,7 @@ IncrementDone:
   STA PPUADDR
   
   LDA PPUDATA
-  CMP #$07 ;Check if Player is on ground or not
+  CMP #$09 ;Check if Player is on ground or not
   BNE FallDone
   
   LDA playerStatus
@@ -472,67 +549,167 @@ FallDone:
   
   .bank 1
   .org $E000
+
+LevelIndex:
+  .dw TestLevelBackgroundIndex,TestLevelAttributeIndex
   
-Background:
-  .db $08,$10 ;Row of ground internal
-  .db $01,$10 ;Row of Ground down
-  .db $09,$B0 ;Fill screen with blank
-  .db $00,$10 ;Row of ground up
-  .db $08,$10 ;Row of ground internal
-  .db $FF ;End of data marker
+TestLevelBackgroundIndex:
+  .dw TestLevel1
+  
+TestLevelAttributeIndex:
+  .dw TestLevelAttribute1
+  
+TestLevel1:
+  .dw Column1_1,Column1_2,Column1_3,Column1_4,Column1_5,Column1_6,Column1_7,Column1_8
+  .dw Column1_9,Column1_10,Column1_11,Column1_12,Column1_13,Column1_14,Column1_15,Column1_16
+  
+Column1_1:
+  .db $08,$0D,$83,$0A,$0B,$08
+  
+Column1_2:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_3:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_4:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_5:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_6:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_7:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_8:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_9:
+  .db $08,$01,$89,$0A,$00,$08
+
+Column1_10:
+  .db $08,$01,$89,$07,$06,$82,$01,$0A,$08
+  
+Column1_11:
+  .db $08,$01,$89,$07,$00,$88,$03
+  
+Column1_12:
+  .db $08,$01,$89,$07,$00,$88,$03
+
+Column1_13:
+  .db $08,$01,$89,$07,$00,$88,$03
+
+Column1_14:
+  .db $08,$01,$89,$07,$00,$88,$03
+
+Column1_15:
+  .db $08,$01,$89,$07,$00,$88,$03
+
+Column1_16:
+  .db $08,$01,$89,$07,$00,$88,$03
+  
+TestLevelAttribute1:
+  .dw Attribute1_1,Attribute1_2,Attribute1_3,Attribute1_4,Attribute1_5,Attribute1_6,Attribute1_7,Attribute1_8
+  
+Attribute1_1:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+
+Attribute1_2:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+
+Attribute1_3:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+
+Attribute1_4:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+  
+Attribute1_5:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+
+Attribute1_6:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+  
+Attribute1_7:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
+
+Attribute1_8:
+  .db $00,$00,$00,$00,$00,$00,$00,$00
   
 ;Metatile lookup table
 Metatiles:
-  .dw GroundUp
-  .dw GroundDown
-  .dw GroundLeft
-  .dw GroundRight
-  .dw GroundBLCorner
-  .dw GroundBRCorner
-  .dw GroundTLCorner
-  .dw GroundTRCorner
-  .dw GroundInternal
-  .dw Blank
+  .dw GroundUp  ;$00
+  .dw GroundDown  ;$01
+  .dw GroundLeft  ;$02
+  .dw GroundRight  ;$03
+  .dw GroundBLCorner  ;$04
+  .dw GroundBRCorner  ;$05
+  .dw GroundTLCorner  ;$06
+  .dw GroundTRCorner  ;$07
+  .dw GroundInternal  ;$08
+  .dw Blank  ;$09
+  .dw InternalTLCorner  ;$0A
+  .dw InternalTRCorner  ;$0B
+  .dw InternalBLCorner  ;$0C
+  .dw InternalBRCorner  ;$0D
   
 GroundUp:
-  .db $00,$01
-  .db $10,$11
+  .db $00,$10
+  .db $01,$11
   
 GroundDown:
-  .db $10,$11
-  .db $12,$13
+  .db $10,$12
+  .db $11,$13
   
 GroundLeft:
-  .db $02,$10
-  .db $03,$11
+  .db $02,$03
+  .db $10,$11
   
 GroundRight:
-  .db $10,$06
-  .db $11,$16
+  .db $10,$11
+  .db $06,$16
   
 GroundBLCorner:
-  .db $02,$10
-  .db $14,$12
+  .db $02,$14
+  .db $10,$12
   
 GroundBRCorner:
-  .db $11,$16
-  .db $12,$15
+  .db $11,$12
+  .db $16,$15
   
 GroundTLCorner:
-  .db $04,$01
-  .db $03,$10
+  .db $04,$03
+  .db $01,$10
   
 GroundTRCorner:
-  .db $00,$05
-  .db $11,$06
+  .db $00,$11
+  .db $05,$06
   
 GroundInternal:
   .db $10,$11
   .db $11,$10
   
 Blank:
-  .db $07,$07
-  .db $07,$07
+  .db $09,$09
+  .db $09,$09
+  
+InternalTLCorner:
+  .db $07,$10
+  .db $10,$11
+ 
+InternalTRCorner:
+  .db $11,$10
+  .db $08,$11
+  
+InternalBLCorner:
+  .db $11,$17
+  .db $10,$11
+  
+InternalBRCorner:
+  .db $10,$11
+  .db $11,$18
   
 palette:
   .db $0F,$2D,$3D,$1F,  $0F,$36,$17,$1F,  $0F,$30,$21,$1F,  $0F,$27,$17,$1F   ;;background palette
@@ -551,4 +728,4 @@ palette:
   
   .bank 2
   .org $0000
-  .incbin "Graphics.chr"   ;includes 8KB graphics file from SMB1
+  .incbin "Graphics.chr"   ;includes 8KB graphics file 
