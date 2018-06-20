@@ -291,11 +291,10 @@ ReadControllerLoop:
   RTS
 
 LoadBackground:
-  LDA PPUSTATUS
   LDA #$20
-  STA PPUADDR ;Set PPU address to $2000
+  STA nameTableAddress ;Reset name table address
   LDA #$00
-  STA PPUADDR
+  STA nameTableAddress + 1
   LDA #%00000100 ;Put PPU in 32 increment mode
   STA PPUCTRL
   
@@ -331,9 +330,17 @@ LoadColumnLoop:
   LDA [backgroundPointer], Y
   STA pointer1 + 1;Pointer 1 now has the column data address
   
+  LDA PPUSTATUS ;Set PPU Address to correct spot
+  LDA nameTableAddress
+  STA PPUADDR
+  LDA nameTableAddress + 1
+  STA PPUADDR
+  
   LDA #$00
   STA colProgress
   JSR LoadColumnData
+  
+  INC nameTableAddress + 1 ;Increment name table address in preparation for next column
   
   LDY yData
   INY
@@ -382,6 +389,13 @@ SetupDone:
   CMP #$1E
   BNE LoadColumnData
 
+  INC nameTableAddress + 1 ;Reset PPU address for drawing in from the buffer
+  LDA PPUSTATUS
+  LDA nameTableAddress
+  STA PPUADDR
+  LDA nameTableAddress + 1
+  STA PPUADDR
+  
   JSR LoadBuffer
   
   RTS
@@ -509,7 +523,7 @@ IncrementDone:
   STA PPUADDR
   
   LDA PPUDATA
-  CMP #$07 ;Check if Player is on ground or not
+  CMP #$09 ;Check if Player is on ground or not
   BNE FallDone
   
   LDA playerStatus
