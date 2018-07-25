@@ -565,6 +565,12 @@ FallDone:
 PlayerBackgroundCheck:
   
   ;Find the tiles the player is on, then check for collision and store them in playerCollision as specified
+  ;Determine what screen the player is on (which set of 16 columns)
+  ;Determine where in this column the player is
+  ;Seek the specified metatilePointer
+  ;Use the loaded metatile number to load the fifth byte of metatile data (collision data)
+  ;Store in the correct location of playerCollision
+  ;Repeat for each collision point to check
   RTS
   
   .bank 1
