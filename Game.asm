@@ -9,8 +9,22 @@
 ;; DECLARE SOME VARIABLES HERE
   .rsset $0000  ;;start variables at ram location 0
 
-playerStatus .rs 1 ;bit 1: 0 is facing right, 1 is facing left
-				   ;bit 0:0 is normal, 1 is up
+playerStatus .rs 1 ;bit 0:0 is normal, 1 is up
+				   ;bit 1: 0 is facing right, 1 is facing left
+				   
+playerCollision .rs 1 ;76543210
+					  ;||||||||
+					  ;|||||||+- Top left collision status
+					  ;||||||+-- Top right collision status
+					  ;|||||+--- Upper right collision status
+					  ;||||+---- Lower right collision status
+					  ;|||+----- Bottom right collision status
+					  ;||+------ Bottom left collision status
+					  ;|+------- Lower left collision status
+					  ;+-------- Upper left collision status
+					  
+collidePointer .rs 2
+				   
 buttons .rs 1
 flipCooldown .rs 1
 
@@ -309,9 +323,10 @@ LoadBackground:
   TAY
   LDA LevelIndex, Y
   STA pointer1
-  INY
-  LDA LevelIndex, Y
+  STA collidePointer
+  LDA LevelIndex + 1, Y
   STA pointer1 + 1  ;pointer1 now contains position of selected level's background index
+  STA collidePointer
   
   LDY #$00
   LDA [pointer1], Y
@@ -547,9 +562,19 @@ FallDone:
   
   RTS
   
+PlayerBackgroundCheck:
+  
+  ;Find the tiles the player is on, then check for collision and store them in playerCollision as specified
+  RTS
+  
   .bank 1
   .org $E000
 
+; Level Data structure:
+; LevelIndex contains entries for addresses of level's background data index, then that level's background attribute data, this then repeats
+; Each entry of the background index/attribute index points to one screens worth of data
+; This data takes the form of the addresses of 16 columns of compressed background data
+  
 LevelIndex:
   .dw TestLevelBackgroundIndex,TestLevelAttributeIndex
   
@@ -655,61 +680,83 @@ Metatiles:
   .dw InternalBLCorner  ;$0C
   .dw InternalBRCorner  ;$0D
   
+;First four bytes of metatiles are the drawing data, fifth is the collision information
+;Fifth byte:
+;76543210
+;|||||||+- 1 is solid on left , 0 is not
+;||||||+-- 1 is solid on right, 0 is not
+;|||||+--- 1 is solid on down, 0 is not
+;||||+---- 1 is solid on up, 0 is not
+;++++----- Reserved for future use
 GroundUp:
   .db $00,$10
   .db $01,$11
+  .db %00001111
   
 GroundDown:
   .db $10,$12
   .db $11,$13
+  .db %00001111
   
 GroundLeft:
   .db $02,$03
   .db $10,$11
+  .db %00001111
   
 GroundRight:
   .db $10,$11
   .db $06,$16
+  .db %00001111
   
 GroundBLCorner:
   .db $02,$14
   .db $10,$12
+  .db %00001111
   
 GroundBRCorner:
   .db $11,$12
   .db $16,$15
+  .db %00001111
   
 GroundTLCorner:
   .db $04,$03
   .db $01,$10
+  .db %00001111
   
 GroundTRCorner:
   .db $00,$11
   .db $05,$06
+  .db %00001111
   
 GroundInternal:
   .db $10,$11
   .db $11,$10
+  .db %00001111
   
 Blank:
   .db $09,$09
   .db $09,$09
+  .db %00000000
   
 InternalTLCorner:
   .db $07,$10
   .db $10,$11
+  .db %00001111
  
 InternalTRCorner:
   .db $11,$10
   .db $08,$11
+  .db %00001111
   
 InternalBLCorner:
   .db $11,$17
   .db $10,$11
+  .db %00001111
   
 InternalBRCorner:
   .db $10,$11
   .db $11,$18
+  .db %00001111
   
 palette:
   .db $0F,$2D,$3D,$1F,  $0F,$36,$17,$1F,  $0F,$30,$21,$1F,  $0F,$27,$17,$1F   ;;background palette
