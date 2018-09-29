@@ -11,17 +11,20 @@
 
 playerStatus .rs 1 ;bit 0:0 is normal, 1 is up
 				   ;bit 1: 0 is facing right, 1 is facing left
-				   
+
+playerXVelocity .rs 1 ;Stored as signed integer
+playerYVelocity .rs 1
+
 playerCollision .rs 1 ;76543210
 					  ;||||||||
 					  ;|||||||+- Top left collision status
 					  ;||||||+-- Top right collision status
-					  ;|||||+--- Upper right collision status
-					  ;||||+---- Lower right collision status
-					  ;|||+----- Bottom right collision status
-					  ;||+------ Bottom left collision status
-					  ;|+------- Lower left collision status
-					  ;+-------- Upper left collision status
+					  ;|||||+--- Bottom right collision status
+					  ;||||+---- Bottom right collision status
+					  ;|||+----- Projected top right collision status
+					  ;||+------ Projected bottom left collision status
+					  ;|+------- Projected bottom left collision status
+					  ;+-------- Projected bottom left collision status
 				   
 buttons .rs 1
 flipCooldown .rs 1
@@ -45,9 +48,12 @@ nameTableAddress .rs 2
 nameTable .rs 1
 
 pointer1 .rs 2 ;General purpose pointers
+pointer2 .rs 2
 
 level .rs 1 ;Level to load
 colProgress .rs 1;Progress in column being loaded
+
+collidePointer .rs 2
 
 ;; DECLARE SOME CONSTANTS HERE
 PPUCTRL = $2000
@@ -145,6 +151,8 @@ LoadPalettesLoop:
   LDA #$00
   STA flipCooldown
   STA playerStatus
+  STA playerXVelocity
+  STA playerYVelocity
 			
   LDA #%10010000   ; enable NMI, sprites from Pattern Table 0
   STA PPUCTRL
@@ -208,6 +216,8 @@ DontTurnRight:
 
   JSR PlayerFall
   
+  JSR UpdatePlayerPosition
+  
   ;Make sure PPU is in desired state before drawing next frame
   LDA #%10010000   ; enable NMI, sprites from Pattern Table 0
   STA PPUCTRL
@@ -224,11 +234,41 @@ DontTurnRight:
   RTI
   
 MovePlayerLeft:
-  LDA playerX
+  LDA playerXVelocity
+  CMP #$83 ;Are they already moving more than -5?
+  BEQ MoveLeftDone
+  
+  AND #$80 ;Is the velocity negative or not
+  BEQ MoveLeftPositive
+  
+  LDA playerXVelocity
+  CLC
+  ADC #$01
+  STA playerXVelocity
+  JMP MoveLeftDone
+  
+  MoveLeftPositive:
+  LDA playerXVelocity ;Value changed by "anding" previously
+  CMP #$00 ;Is the velocity 0, special case, need to add #$81 to make it negative
+  BEQ MoveLeftZero
+  
   SEC
   SBC #$01
-  STA playerX
+  STA playerXVelocity
+  JMP MoveLeftDone
   
+  MoveLeftZero:
+  CLC
+  ADC #$81
+  STA playerXVelocity
+  ;JMP MoveLeftDone
+  
+  ;LDA playerX
+  ;SEC
+  ;SBC #$01
+  ;STA playerX
+ 
+MoveLeftDone:
   RTS
   
 MovePlayerRight
@@ -261,6 +301,61 @@ TurnPlayer:
  STA playerStatus
  
  RTS
+ 
+UpdatePlayerPosition:
+  LDA playerXVelocity
+  AND #$80
+  BEQ UpdatePositiveXVelocity
+  
+  LDA playerXVelocity
+  AND #$7F ;Strip out the negative indicator bit
+  STA xData
+  
+  LDA playerX
+  SEC
+  SBC xData
+  STA playerX
+  JMP UpdateXPositionDone
+  
+UpdatePositiveXVelocity:
+  LDA playerXVelocity
+  AND #$7F
+  STA xData
+  
+  LDA playerX
+  CLC
+  ADC xData
+  STA playerX
+  
+UpdateXPositionDone:
+
+  LDA playerYVelocity
+  AND #$80
+  BEQ UpdatePositiveYVelocity
+  
+  LDA playerYVelocity
+  AND #$7F
+  STA xData
+  
+  LDA playerY
+  SEC
+  SBC xData
+  STA playerY
+  JMP UpdateYPositionDone
+  
+UpdatePositiveYVelocity:
+  LDA playerYVelocity
+  AND #$7F
+  STA xData
+  
+  LDA playerY
+  CLC
+  ADC xData
+  STA playerY
+  
+UpdateYPositionDone:
+  RTS
+  
   
 FlipPlayer:
   
