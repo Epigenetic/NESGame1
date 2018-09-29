@@ -22,8 +22,6 @@ playerCollision .rs 1 ;76543210
 					  ;||+------ Bottom left collision status
 					  ;|+------- Lower left collision status
 					  ;+-------- Upper left collision status
-					  
-collidePointer .rs 2
 				   
 buttons .rs 1
 flipCooldown .rs 1
@@ -42,11 +40,12 @@ yData .rs 1
 playerX .rs 1 ;Player's current X and Y coordinates
 playerY .rs 1
 
-scroll .rs 1
+scroll .rs 2 ;low byte indicates scroll given to PPU (actual screen scroll), high byte indicates which screen of data the game is in
 nameTableAddress .rs 2
 nameTable .rs 1
 
-pointer1 .rs 2
+pointer1 .rs 2 ;General purpose pointers
+
 level .rs 1 ;Level to load
 colProgress .rs 1;Progress in column being loaded
 
@@ -216,7 +215,7 @@ DontTurnRight:
   LDA #%00011110   ; enable sprites, enable background, no clipping on left side
   STA PPUMASK
   
-  LDA scroll
+  LDA scroll+1
   STA PPUSCROLL
   LDA #$00
   STA PPUSCROLL
@@ -323,10 +322,8 @@ LoadBackground:
   TAY
   LDA LevelIndex, Y
   STA pointer1
-  STA collidePointer
   LDA LevelIndex + 1, Y
   STA pointer1 + 1  ;pointer1 now contains position of selected level's background index
-  STA collidePointer
   
   LDY #$00
   LDA [pointer1], Y
@@ -563,6 +560,27 @@ FallDone:
   RTS
   
 PlayerBackgroundCheck:
+  
+  LDA scroll
+  ASL A;each entry is 2 bytes long, so to get the proper position double the room count
+  TAY
+  LDA [collidePointer], Y
+  STA pointer1
+  INY
+  LDA [collidePointer], Y
+  STA pointer1 + 1 ;pointer1 now has the address of the correct screen's column index
+  
+  LDA scroll + 1
+  CLC
+  ADC playerX ;Determine what column the player is on
+  LSR A
+  LSR A ;Columns are 8 pixels wide, so divide scroll by 8 to help us find the correct column, but each column address is 2 bytes long, so multiply by two, net result is divide by 4
+  TAY
+  LDA [pointer1], Y
+  STA pointer2
+  INY
+  LDA [pointer1], Y
+  STA pointer2 + 1 ;pointer2 now contains the address of the column data that the player is on
   
   ;Find the tiles the player is on, then check for collision and store them in playerCollision as specified
   ;Determine what screen the player is on (which set of 16 columns)
