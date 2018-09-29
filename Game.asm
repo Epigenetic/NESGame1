@@ -214,6 +214,14 @@ MoveRight:
 
 DontTurnRight:
 
+  LDA buttons
+  AND #%00000011 ;If right or left is pushed
+  BNE KeepMoving
+  LDA #$00
+  STA playerXVelocity
+  
+KeepMoving:
+
   JSR PlayerFall
   
   JSR UpdatePlayerPosition
@@ -234,48 +242,15 @@ DontTurnRight:
   RTI
   
 MovePlayerLeft:
-  LDA playerXVelocity
-  CMP #$83 ;Are they already moving more than -5?
-  BEQ MoveLeftDone
-  
-  AND #$80 ;Is the velocity negative or not
-  BEQ MoveLeftPositive
-  
-  LDA playerXVelocity
-  CLC
-  ADC #$01
+  LDA #$82
   STA playerXVelocity
-  JMP MoveLeftDone
-  
-  MoveLeftPositive:
-  LDA playerXVelocity ;Value changed by "anding" previously
-  CMP #$00 ;Is the velocity 0, special case, need to add #$81 to make it negative
-  BEQ MoveLeftZero
-  
-  SEC
-  SBC #$01
-  STA playerXVelocity
-  JMP MoveLeftDone
-  
-  MoveLeftZero:
-  CLC
-  ADC #$81
-  STA playerXVelocity
-  ;JMP MoveLeftDone
-  
-  ;LDA playerX
-  ;SEC
-  ;SBC #$01
-  ;STA playerX
  
 MoveLeftDone:
   RTS
   
 MovePlayerRight
-  LDA playerX
-  CLC
-  ADC #$01
-  STA playerX
+  LDA #$02
+  STA playerXVelocity
   
   RTS
 TurnPlayer:
