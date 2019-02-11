@@ -55,6 +55,9 @@ colProgress .rs 1;Progress in column being loaded
 
 collidePointer .rs 2
 
+collideVertical .rs 4 ;Stores the location of the four hitbox corners, stored clockwise from top left corner
+collideHorizontal .rs 4
+
 ;; DECLARE SOME CONSTANTS HERE
 PPUCTRL = $2000
 PPUMASK = $2001
@@ -629,6 +632,7 @@ FallDone:
   
   RTS
   
+;Expects collidePointer to be set to the current level's address (not currently true)
 PlayerBackgroundCheck:
   
   LDA scroll
@@ -650,7 +654,29 @@ PlayerBackgroundCheck:
   STA pointer2
   INY
   LDA [pointer1], Y
-  STA pointer2 + 1 ;pointer2 now contains the address of the column data that the player is on
+  STA pointer2 + 1 ;pointer2 now contains the address of the column data that the left side of the player is on
+  
+  LDA playerX ;now filing collideHorizontal and collideVertical with the relevant data
+  CLC
+  ADC #$03
+  STA collideHorizontal
+  STA collideHorizontal + 3
+  
+  CLC
+  ADC #$07
+  STA collideHorizontal + 1
+  STA collideHorizontal + 2
+  
+  LDA playerY
+  CLC
+  ADC #$04
+  STA collideVertical
+  STA collideVertical + 1
+  
+  CLC
+  ADC #$0B
+  STA collideVertical + 2
+  STA collideVertical + 3
   
   ;Find the tiles the player is on, then check for collision and store them in playerCollision as specified
   ;Determine what screen the player is on (which set of 16 columns)
