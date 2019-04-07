@@ -239,10 +239,20 @@ MoveLeftDone:
   RTS
   
 MovePlayerRight
+  
+  LDA playerCollision + 2
+  JSR IsSolid
+  BNE DontConsiderCollision
+  LDA #$00
+  STA playerXVelocity
+  JMP MoveRightDone
+  
+DontConsiderCollision:
   LDA #$02
   STA playerXVelocity
-  
+MoveRightDone: 
   RTS
+  
 TurnPlayer:
  LDA PLAYERSPRITES + 1
  LDX PLAYERSPRITES + 5
@@ -543,10 +553,10 @@ PlayerFall:
   JSR PlayerBackgroundCheck
   
   LDA playerCollision
-  JSR IsGround
+  JSR IsSolid
   BEQ FallDone
   LDA playerCollision + 1
-  JSR IsGround
+  JSR IsSolid
   BEQ FallDone
   
 Fall:
@@ -572,16 +582,16 @@ FallDone:
   RTS
   
 ;Assumes that tile being asked about is put in accumulator already
-IsGround:
+IsSolid:
 
   CMP #$09
   BEQ Ground
   LDA #$00 ;Not ground
-  JMP IsGroundDone
+  JMP IsSolidDone
   
 Ground:
   LDA #$01 ;Is ground
-IsGroundDone:
+IsSolidDone:
   RTS
   
 PlayerBackgroundCheck:
@@ -728,7 +738,7 @@ IncrementXDone:
   
   LDA playerY
   CLC
-  ADC #$08
+  ADC #$02
   AND #%11111000
   ASL A
   ROL nameTableAddress
