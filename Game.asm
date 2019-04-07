@@ -544,11 +544,10 @@ PlayerFall:
   
   LDA playerCollision
   JSR IsGround
-  BNE Fall
+  BEQ FallDone
   LDA playerCollision + 1
   JSR IsGround
-  BNE Fall
-  JMP FallDone
+  BEQ FallDone
   
 Fall:
   LDA playerStatus
@@ -581,7 +580,7 @@ IsGround:
   JMP IsGroundDone
   
 Ground:
-  LDA #$0 ;Is ground
+  LDA #$01 ;Is ground
 IsGroundDone:
   RTS
   
