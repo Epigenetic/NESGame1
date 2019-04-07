@@ -540,66 +540,17 @@ UpdatePlayerSprites:
   
 PlayerFall:
   
-  LDA #$00
-  STA nameTableAddress ;Clear high byte of address
+  JSR PlayerBackgroundCheck
   
-  LDA playerX
-  CLC
-  ADC #$05
-  LSR A
-  LSR A
-  LSR A
-  STA nameTableAddress + 1
+  LDA playerCollision
+  JSR IsGround
+  BNE Fall
+  LDA playerCollision + 1
+  JSR IsGround
+  BNE Fall
+  JMP FallDone
   
-  LDA playerStatus
-  AND #%00000001
-  BEQ IncrementPlayerY
-  JMP DontIncrementPlayerY
-  
-IncrementPlayerY:
-  LDA playerY
-  CLC
-  ADC #$12
-  JMP IncrementDone
-  
-DontIncrementPlayerY:
-  LDA playerY
-  SEC
-  SBC #$01
-  
-IncrementDone:
-  
-  AND #%11111000 ;Avoid having to LSR 3 times to get rid of that information since would then have to ASL 5 times
-  ASL A
-  ROL nameTableAddress
-  ASL A
-  ROL nameTableAddress ;Multiply by 4, move bits into high byte of address
-  CLC
-  ADC nameTableAddress + 1 ;Add result to existing address
-  STA nameTableAddress + 1
-  LDA nameTableAddress
-  ADC #$00
-  STA nameTableAddress ;Add any potential carry
-  
-  LDA nameTable
-  ASL A
-  ASL A
-  CLC
-  ADC nameTableAddress
-  CLC 
-  ADC #$20
-  STA nameTableAddress
-  
-  LDA PPUSTATUS
-  LDA nameTableAddress
-  STA PPUADDR
-  LDA nameTableAddress + 1
-  STA PPUADDR
-  
-  LDA PPUDATA
-  CMP #$09 ;Check if Player is on ground or not
-  BNE FallDone
-  
+Fall:
   LDA playerStatus
   AND #%00000001
   BEQ FallDown
@@ -619,6 +570,19 @@ FallDown:
   
 FallDone:
   
+  RTS
+  
+;Assumes that tile being asked about is put in accumulator already
+IsGround:
+
+  CMP #$09
+  BEQ Ground
+  LDA #$00 ;Not ground
+  JMP IsGroundDone
+  
+Ground:
+  LDA #$0 ;Is ground
+IsGroundDone:
   RTS
   
 PlayerBackgroundCheck:
