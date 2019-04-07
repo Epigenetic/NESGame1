@@ -15,16 +15,7 @@ playerStatus .rs 1 ;bit 0:0 is normal, 1 is up
 playerXVelocity .rs 1 ;Stored as signed integer
 playerYVelocity .rs 1
 
-playerCollision .rs 1 ;76543210
-					  ;||||||||
-					  ;|||||||+- Top left collision status
-					  ;||||||+-- Top right collision status
-					  ;|||||+--- Bottom right collision status
-					  ;||||+---- Bottom right collision status
-					  ;|||+----- Projected top right collision status
-					  ;||+------ Projected bottom left collision status
-					  ;|+------- Projected bottom left collision status
-					  ;+-------- Projected bottom left collision status
+playerCollision .rs 3;First byte is top/bottom left, second byte is top/bottom right, third byte is left/right
 				   
 buttons .rs 1
 flipCooldown .rs 1
@@ -53,10 +44,6 @@ pointer2 .rs 2
 level .rs 1 ;Level to load
 colProgress .rs 1;Progress in column being loaded
 
-collidePointer .rs 2
-
-collideVertical .rs 4 ;Stores the location of the four hitbox corners, stored clockwise from top left corner
-collideHorizontal .rs 4
 
 ;; DECLARE SOME CONSTANTS HERE
 PPUCTRL = $2000
@@ -557,6 +544,8 @@ PlayerFall:
   STA nameTableAddress ;Clear high byte of address
   
   LDA playerX
+  CLC
+  ADC #$05
   LSR A
   LSR A
   LSR A
@@ -632,59 +621,181 @@ FallDone:
   
   RTS
   
-;Expects collidePointer to be set to the current level's address (not currently true)
 PlayerBackgroundCheck:
+  LDA #$00
+  STA nameTableAddress ;Clear high byte of address
   
-  LDA scroll
-  ASL A;each entry is 2 bytes long, so to get the proper position double the room count
-  TAY
-  LDA [collidePointer], Y
-  STA pointer1
-  INY
-  LDA [collidePointer], Y
-  STA pointer1 + 1 ;pointer1 now has the address of the correct screen's column index
-  
-  LDA scroll + 1
+  LDA playerX
   CLC
-  ADC playerX ;Determine what column the player is on
+  ADC #$05
   LSR A
-  LSR A ;Columns are 8 pixels wide, so divide scroll by 8 to help us find the correct column, but each column address is 2 bytes long, so multiply by two, net result is divide by 4
-  TAY
-  LDA [pointer1], Y
-  STA pointer2
-  INY
-  LDA [pointer1], Y
-  STA pointer2 + 1 ;pointer2 now contains the address of the column data that the left side of the player is on
+  LSR A
+  LSR A
+  STA nameTableAddress + 1
   
-  LDA playerX ;now filing collideHorizontal and collideVertical with the relevant data
-  CLC
-  ADC #$03
-  STA collideHorizontal
-  STA collideHorizontal + 3
+  LDA playerStatus
+  AND #%00000001
+  BEQ IncrementPlayerY1
+  JMP DontIncrementPlayerY1
   
+IncrementPlayerY1:
+  LDA playerY
   CLC
-  ADC #$07
-  STA collideHorizontal + 1
-  STA collideHorizontal + 2
+  ADC #$12
+  JMP IncrementDone1
+  
+DontIncrementPlayerY1:
+  LDA playerY
+  SEC
+  SBC #$01
+  
+IncrementDone1:
+  AND #%11111000 ;Avoid having to LSR 3 times to get rid of that information since would then have to ASL 5 times
+  ASL A
+  ROL nameTableAddress
+  ASL A
+  ROL nameTableAddress ;Multiply by 4, move bits into high byte of address
+  CLC
+  ADC nameTableAddress + 1 ;Add result to existing address
+  STA nameTableAddress + 1
+  LDA nameTableAddress
+  ADC #$00
+  STA nameTableAddress ;Add any potential carry
+  
+  LDA nameTable
+  ASL A
+  ASL A
+  CLC
+  ADC nameTableAddress
+  CLC 
+  ADC #$20
+  STA nameTableAddress
+  
+  LDA PPUSTATUS
+  LDA nameTableAddress
+  STA PPUADDR
+  LDA nameTableAddress + 1
+  STA PPUADDR
+  
+  LDA PPUDATA
+  STA playerCollision
+  
+  LDA #$00
+  STA nameTableAddress ;Clear high byte of address
+  
+  LDA playerX
+  CLC
+  ADC #$0A
+  LSR A
+  LSR A
+  LSR A
+  STA nameTableAddress + 1
+  
+  LDA playerStatus
+  AND #%00000001
+  BEQ IncrementPlayerY2
+  JMP DontIncrementPlayerY2
+  
+IncrementPlayerY2:
+  LDA playerY
+  CLC
+  ADC #$12
+  JMP IncrementDone2
+  
+DontIncrementPlayerY2:
+  LDA playerY
+  SEC
+  SBC #$01
+  
+IncrementDone2:
+  AND #%11111000 ;Avoid having to LSR 3 times to get rid of that information since would then have to ASL 5 times
+  ASL A
+  ROL nameTableAddress
+  ASL A
+  ROL nameTableAddress ;Multiply by 4, move bits into high byte of address
+  CLC
+  ADC nameTableAddress + 1 ;Add result to existing address
+  STA nameTableAddress + 1
+  LDA nameTableAddress
+  ADC #$00
+  STA nameTableAddress ;Add any potential carry
+  
+  LDA nameTable
+  ASL A
+  ASL A
+  CLC
+  ADC nameTableAddress
+  CLC 
+  ADC #$20
+  STA nameTableAddress
+  
+  LDA PPUSTATUS
+  LDA nameTableAddress
+  STA PPUADDR
+  LDA nameTableAddress + 1
+  STA PPUADDR
+  
+  LDA PPUDATA
+  STA playerCollision + 1
+  
+  LDA #$00
+  STA nameTableAddress
+  
+  LDA playerStatus
+  AND #%00000010
+  BEQ IncrementPlayerX
+  JMP DontIncrementPlayerX
+  
+IncrementPlayerX:
+  LDA playerX
+  CLC 
+  ADC #$0C
+  JMP IncrementXDone
+  
+DontIncrementPlayerX:
+  LDA playerX
+  CLC
+  ADC #$04
+
+IncrementXDone:
+  LSR A
+  LSR A
+  LSR A
+  STA nameTableAddress+1
   
   LDA playerY
   CLC
-  ADC #$04
-  STA collideVertical
-  STA collideVertical + 1
-  
+  ADC #$08
+  AND #%11111000
+  ASL A
+  ROL nameTableAddress
+  ASL A
+  ROL nameTableAddress
   CLC
-  ADC #$0B
-  STA collideVertical + 2
-  STA collideVertical + 3
+  ADC nameTableAddress + 1
+  STA nameTableAddress + 1
+  LDA nameTableAddress
+  ADC #$00
+  STA nameTableAddress
   
-  ;Find the tiles the player is on, then check for collision and store them in playerCollision as specified
-  ;Determine what screen the player is on (which set of 16 columns)
-  ;Determine where in this column the player is
-  ;Seek the specified metatilePointer
-  ;Use the loaded metatile number to load the fifth byte of metatile data (collision data)
-  ;Store in the correct location of playerCollision
-  ;Repeat for each collision point to check
+  LDA nameTable
+  ASL A
+  ASL A
+  CLC
+  ADC nameTableAddress
+  CLC
+  ADC #$20
+  STA nameTableAddress
+  
+  LDA PPUSTATUS
+  LDA nameTableAddress
+  STA PPUADDR
+  LDA nameTableAddress + 1
+  STA PPUADDR
+  
+  LDA PPUDATA
+  STA playerCollision + 2
+  
   RTS
   
   .bank 1
