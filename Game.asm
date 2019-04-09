@@ -232,7 +232,16 @@ KeepMoving:
   RTI
   
 MovePlayerLeft:
-  LDA #$82
+  
+  LDA playerCollision
+  JSR IsSolid
+  BNE DontConsiderCollisionLeft
+  LDA #$00
+  STA playerXVelocity
+  JMP MoveLeftDone
+  
+DontConsiderCollisionLeft:
+  LDA #$81
   STA playerXVelocity
  
 MoveLeftDone:
@@ -240,15 +249,15 @@ MoveLeftDone:
   
 MovePlayerRight
   
-  LDA playerCollision + 2
+  LDA playerCollision
   JSR IsSolid
-  BNE DontConsiderCollision
+  BNE DontConsiderCollisionRight
   LDA #$00
   STA playerXVelocity
   JMP MoveRightDone
   
-DontConsiderCollision:
-  LDA #$02
+DontConsiderCollisionRight:
+  LDA #$01
   STA playerXVelocity
 MoveRightDone: 
   RTS
@@ -552,7 +561,7 @@ PlayerFall:
   
   JSR PlayerBackgroundCheck
   
-  LDA playerCollision
+  LDA playerCollision + 2
   JSR IsSolid
   BEQ FallDone
   LDA playerCollision + 1
@@ -722,13 +731,13 @@ IncrementDone2:
 IncrementPlayerX:
   LDA playerX
   CLC 
-  ADC #$0C
+  ADC #$0D
   JMP IncrementXDone
   
 DontIncrementPlayerX:
   LDA playerX
   CLC
-  ADC #$04
+  ADC #$02
 
 IncrementXDone:
   LSR A
@@ -738,7 +747,7 @@ IncrementXDone:
   
   LDA playerY
   CLC
-  ADC #$02
+  ADC #$0F
   AND #%11111000
   ASL A
   ROL nameTableAddress
