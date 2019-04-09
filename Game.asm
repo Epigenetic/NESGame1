@@ -11,19 +11,11 @@
 
 playerStatus .rs 1 ;bit 0:0 is normal, 1 is up
 				   ;bit 1: 0 is facing right, 1 is facing left
-				   
-playerCollision .rs 1 ;76543210
-					  ;||||||||
-					  ;|||||||+- Top left collision status
-					  ;||||||+-- Top right collision status
-					  ;|||||+--- Upper right collision status
-					  ;||||+---- Lower right collision status
-					  ;|||+----- Bottom right collision status
-					  ;||+------ Bottom left collision status
-					  ;|+------- Lower left collision status
-					  ;+-------- Upper left collision status
-					  
-collidePointer .rs 2
+
+playerXVelocity .rs 1 ;Stored as signed integer
+playerYVelocity .rs 1
+
+playerCollision .rs 3;First byte is top/bottom left, second byte is top/bottom right, third byte is left/right
 				   
 buttons .rs 1
 flipCooldown .rs 1
@@ -42,13 +34,16 @@ yData .rs 1
 playerX .rs 1 ;Player's current X and Y coordinates
 playerY .rs 1
 
-scroll .rs 1
+scroll .rs 2 ;low byte indicates scroll given to PPU (actual screen scroll), high byte indicates which screen of data the game is in
 nameTableAddress .rs 2
 nameTable .rs 1
 
-pointer1 .rs 2
+pointer1 .rs 2 ;General purpose pointers
+pointer2 .rs 2
+
 level .rs 1 ;Level to load
 colProgress .rs 1;Progress in column being loaded
+
 
 ;; DECLARE SOME CONSTANTS HERE
 PPUCTRL = $2000
@@ -146,6 +141,8 @@ LoadPalettesLoop:
   LDA #$00
   STA flipCooldown
   STA playerStatus
+  STA playerXVelocity
+  STA playerYVelocity
 			
   LDA #%10010000   ; enable NMI, sprites from Pattern Table 0
   STA PPUCTRL
@@ -207,7 +204,17 @@ MoveRight:
 
 DontTurnRight:
 
+  LDA buttons
+  AND #%00000011 ;If right or left is pushed
+  BNE KeepMoving
+  LDA #$00
+  STA playerXVelocity
+  
+KeepMoving:
+
   JSR PlayerFall
+  
+  JSR UpdatePlayerPosition
   
   ;Make sure PPU is in desired state before drawing next frame
   LDA #%10010000   ; enable NMI, sprites from Pattern Table 0
@@ -216,7 +223,7 @@ DontTurnRight:
   LDA #%00011110   ; enable sprites, enable background, no clipping on left side
   STA PPUMASK
   
-  LDA scroll
+  LDA scroll+1
   STA PPUSCROLL
   LDA #$00
   STA PPUSCROLL
@@ -225,20 +232,36 @@ DontTurnRight:
   RTI
   
 MovePlayerLeft:
-  LDA playerX
-  SEC
-  SBC #$01
-  STA playerX
   
+  LDA playerCollision
+  JSR IsSolid
+  BNE DontConsiderCollisionLeft
+  LDA #$00
+  STA playerXVelocity
+  JMP MoveLeftDone
+  
+DontConsiderCollisionLeft:
+  LDA #$81
+  STA playerXVelocity
+ 
+MoveLeftDone:
   RTS
   
 MovePlayerRight
-  LDA playerX
-  CLC
-  ADC #$01
-  STA playerX
   
+  LDA playerCollision
+  JSR IsSolid
+  BNE DontConsiderCollisionRight
+  LDA #$00
+  STA playerXVelocity
+  JMP MoveRightDone
+  
+DontConsiderCollisionRight:
+  LDA #$01
+  STA playerXVelocity
+MoveRightDone: 
   RTS
+  
 TurnPlayer:
  LDA PLAYERSPRITES + 1
  LDX PLAYERSPRITES + 5
@@ -262,6 +285,61 @@ TurnPlayer:
  STA playerStatus
  
  RTS
+ 
+UpdatePlayerPosition:
+  LDA playerXVelocity
+  AND #$80
+  BEQ UpdatePositiveXVelocity
+  
+  LDA playerXVelocity
+  AND #$7F ;Strip out the negative indicator bit
+  STA xData
+  
+  LDA playerX
+  SEC
+  SBC xData
+  STA playerX
+  JMP UpdateXPositionDone
+  
+UpdatePositiveXVelocity:
+  LDA playerXVelocity
+  AND #$7F
+  STA xData
+  
+  LDA playerX
+  CLC
+  ADC xData
+  STA playerX
+  
+UpdateXPositionDone:
+
+  LDA playerYVelocity
+  AND #$80
+  BEQ UpdatePositiveYVelocity
+  
+  LDA playerYVelocity
+  AND #$7F
+  STA xData
+  
+  LDA playerY
+  SEC
+  SBC xData
+  STA playerY
+  JMP UpdateYPositionDone
+  
+UpdatePositiveYVelocity:
+  LDA playerYVelocity
+  AND #$7F
+  STA xData
+  
+  LDA playerY
+  CLC
+  ADC xData
+  STA playerY
+  
+UpdateYPositionDone:
+  RTS
+  
   
 FlipPlayer:
   
@@ -323,10 +401,8 @@ LoadBackground:
   TAY
   LDA LevelIndex, Y
   STA pointer1
-  STA collidePointer
   LDA LevelIndex + 1, Y
   STA pointer1 + 1  ;pointer1 now contains position of selected level's background index
-  STA collidePointer
   
   LDY #$00
   LDA [pointer1], Y
@@ -483,10 +559,57 @@ UpdatePlayerSprites:
   
 PlayerFall:
   
+  JSR PlayerBackgroundCheck
+  
+  LDA playerCollision + 2
+  JSR IsSolid
+  BEQ FallDone
+  LDA playerCollision + 1
+  JSR IsSolid
+  BEQ FallDone
+  
+Fall:
+  LDA playerStatus
+  AND #%00000001
+  BEQ FallDown
+  
+FallUp:
+  LDA playerY
+  SEC
+  SBC #$01
+  STA playerY
+  JMP FallDone
+  
+FallDown:
+  LDA playerY
+  CLC
+  ADC #$01
+  STA playerY
+  
+FallDone:
+  
+  RTS
+  
+;Assumes that tile being asked about is put in accumulator already
+IsSolid:
+
+  CMP #$09
+  BEQ Ground
+  LDA #$00 ;Not ground
+  JMP IsSolidDone
+  
+Ground:
+  LDA #$01 ;Is ground
+IsSolidDone:
+  RTS
+  
+PlayerBackgroundCheck:
   LDA #$00
   STA nameTableAddress ;Clear high byte of address
   
   LDA playerX
+  CLC
+  ADC #$05
   LSR A
   LSR A
   LSR A
@@ -494,22 +617,21 @@ PlayerFall:
   
   LDA playerStatus
   AND #%00000001
-  BEQ IncrementPlayerY
-  JMP DontIncrementPlayerY
+  BEQ IncrementPlayerY1
+  JMP DontIncrementPlayerY1
   
-IncrementPlayerY:
+IncrementPlayerY1:
   LDA playerY
   CLC
   ADC #$12
-  JMP IncrementDone
+  JMP IncrementDone1
   
-DontIncrementPlayerY:
+DontIncrementPlayerY1:
   LDA playerY
   SEC
   SBC #$01
   
-IncrementDone:
-  
+IncrementDone1:
   AND #%11111000 ;Avoid having to LSR 3 times to get rid of that information since would then have to ASL 5 times
   ASL A
   ROL nameTableAddress
@@ -538,39 +660,124 @@ IncrementDone:
   STA PPUADDR
   
   LDA PPUDATA
-  CMP #$09 ;Check if Player is on ground or not
-  BNE FallDone
+  STA playerCollision
+  
+  LDA #$00
+  STA nameTableAddress ;Clear high byte of address
+  
+  LDA playerX
+  CLC
+  ADC #$0A
+  LSR A
+  LSR A
+  LSR A
+  STA nameTableAddress + 1
   
   LDA playerStatus
   AND #%00000001
-  BEQ FallDown
+  BEQ IncrementPlayerY2
+  JMP DontIncrementPlayerY2
   
-FallUp:
+IncrementPlayerY2:
+  LDA playerY
+  CLC
+  ADC #$12
+  JMP IncrementDone2
+  
+DontIncrementPlayerY2:
   LDA playerY
   SEC
   SBC #$01
-  STA playerY
-  JMP FallDone
   
-FallDown:
+IncrementDone2:
+  AND #%11111000 ;Avoid having to LSR 3 times to get rid of that information since would then have to ASL 5 times
+  ASL A
+  ROL nameTableAddress
+  ASL A
+  ROL nameTableAddress ;Multiply by 4, move bits into high byte of address
+  CLC
+  ADC nameTableAddress + 1 ;Add result to existing address
+  STA nameTableAddress + 1
+  LDA nameTableAddress
+  ADC #$00
+  STA nameTableAddress ;Add any potential carry
+  
+  LDA nameTable
+  ASL A
+  ASL A
+  CLC
+  ADC nameTableAddress
+  CLC 
+  ADC #$20
+  STA nameTableAddress
+  
+  LDA PPUSTATUS
+  LDA nameTableAddress
+  STA PPUADDR
+  LDA nameTableAddress + 1
+  STA PPUADDR
+  
+  LDA PPUDATA
+  STA playerCollision + 1
+  
+  LDA #$00
+  STA nameTableAddress
+  
+  LDA playerStatus
+  AND #%00000010
+  BEQ IncrementPlayerX
+  JMP DontIncrementPlayerX
+  
+IncrementPlayerX:
+  LDA playerX
+  CLC 
+  ADC #$0D
+  JMP IncrementXDone
+  
+DontIncrementPlayerX:
+  LDA playerX
+  CLC
+  ADC #$02
+
+IncrementXDone:
+  LSR A
+  LSR A
+  LSR A
+  STA nameTableAddress+1
+  
   LDA playerY
   CLC
-  ADC #$01
-  STA playerY
+  ADC #$0F
+  AND #%11111000
+  ASL A
+  ROL nameTableAddress
+  ASL A
+  ROL nameTableAddress
+  CLC
+  ADC nameTableAddress + 1
+  STA nameTableAddress + 1
+  LDA nameTableAddress
+  ADC #$00
+  STA nameTableAddress
   
-FallDone:
+  LDA nameTable
+  ASL A
+  ASL A
+  CLC
+  ADC nameTableAddress
+  CLC
+  ADC #$20
+  STA nameTableAddress
   
-  RTS
+  LDA PPUSTATUS
+  LDA nameTableAddress
+  STA PPUADDR
+  LDA nameTableAddress + 1
+  STA PPUADDR
   
-PlayerBackgroundCheck:
+  LDA PPUDATA
+  STA playerCollision + 2
   
-  ;Find the tiles the player is on, then check for collision and store them in playerCollision as specified
-  ;Determine what screen the player is on (which set of 16 columns)
-  ;Determine where in this column the player is
-  ;Seek the specified metatilePointer
-  ;Use the loaded metatile number to load the fifth byte of metatile data (collision data)
-  ;Store in the correct location of playerCollision
-  ;Repeat for each collision point to check
   RTS
   
   .bank 1
